@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Program: Skeleton for Task 1c – group assignment
+// Program: Skeleton for Task 1c â€“ group assignment
 // Author: Pascale Vacher
 // Last updated: 26 February 2018
 // ---------------------------------------------------------------------------
@@ -30,8 +30,8 @@ using namespace std;
 // ---------------------------------------------------------------------------
 
 // defining the size of the grid
-const int  SIZEX(10);    	// horizontal dimension
-const int  SIZEY(8);		// vertical dimension
+const int  SIZEX(25);    	// horizontal dimension
+const int  SIZEY(20);		// vertical dimension
 // defining symbols used for display of the grid and content
 const char SPOT('@');   	// spot
 const char TUNNEL(' ');    	// tunnel
@@ -125,8 +125,8 @@ void setSpotInitialCoordinates(Item& spot, char maze[][SIZEX])
 
 void setInitialMazeStructure(char maze[][SIZEX])
 {
+	/*
 	// set the position of the walls in the maze
-	// TODO - initial maze configuration should be amended (size changed and inner walls removed)
 	// initialise maze configuration
 	char initialMaze[SIZEY][SIZEX] = {	// local array to store the maze structure
 		{ '#', '#', '#', '#', '#', '#', '#', '#', '#', '#' },
@@ -147,6 +147,10 @@ void setInitialMazeStructure(char maze[][SIZEX])
 				case '#': maze[row][col] = WALL; break;
 				case ' ': maze[row][col] = TUNNEL; break;
 			}
+	*/
+	for (int row(0); row < SIZEY; ++row)
+		for (int col(0); col < SIZEX; ++col)
+			maze[row][col] = (col == 0 || col == SIZEX - 1 || row == 0 || row == SIZEY - 1) ? WALL : TUNNEL;
 }
 
 // ---------------------------------------------------------------------------
@@ -203,8 +207,6 @@ void updateGameData(const char g[][SIZEX], Item& spot, const int key, string& me
 			spot.x += dx;	// go in that X direction
 			break;
 		case WALL:  		// hit a wall and stay there
-		// TODO - remove alarm when bumping into walls - too annoying
-			cout << '\a';	// beep the alarm
 			mess = "CANNOT GO THERE!";
 			break;
 	}
@@ -292,25 +294,25 @@ void showMessage(const WORD backColour, const WORD textColour, int x, int y, con
 
 void paintGame(const char g[][SIZEX], string mess)
 {
+	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 	// display game title, messages, maze, spot and other items on screen
 	string tostring(char x);
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string message);
 	void paintGrid(const char g[][SIZEX]);
-	// TODO - Change the colour of the messages
 	// display game title
-	showMessage(clBlack, clYellow, 0, 0, "___GAME___");
+	showMessage(clDarkGreen, clGreen, 0, 0, "___GAME___");
 	// TODO - Date and time should be displayed from the system
 	string time = convertTime();
-	showMessage(clWhite, clRed, 40, 0, time);
-	showMessage(clWhite, clRed, 40, 0, "FoP Task 1c: February 2018");
+	showMessage(clYellow, clBlue, 40, 0, time);
+	showMessage(clYellow, clBlue, 40, 0, "FoP Task 1c: February 2018");
 	// display Group number, and members onscreen.
 	showMessage(clWhite, clRed, 40, 4, "CS4G1a - Charlie Batten, Matt Bellamy, Nico Caruana           ");
 	// display menu options available
-	showMessage(clRed, clYellow, 40, 3, "TO MOVE USE KEYBOARD ARROWS ");
-	showMessage(clRed, clYellow, 40, 4, "TO QUIT ENTER 'Q'           ");
+	showMessage(clRed, clGreen, 40, 3, "TO MOVE USE KEYBOARD ARROWS ");
+	showMessage(clRed, clGreen, 40, 4, "TO QUIT ENTER 'Q'           ");
 
 	// print auxiliary messages if any
-	showMessage(clBlack, clWhite, 40, 8, mess);	// display current message
+	showMessage(clBlack, clYellow, 40, 8, mess);	// display current message
 
 
 
