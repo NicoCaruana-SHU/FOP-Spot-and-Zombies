@@ -18,6 +18,7 @@
 #include <string>
 #include <sstream>
 #include <time.h> // For time display
+#include <vector>
 
 using namespace std;
 
@@ -36,11 +37,14 @@ const int  SIZEY(20);		// vertical dimension
 const char SPOT('@');   	// spot
 const char TUNNEL(' ');    	// tunnel
 const char WALL('#');    	// border
+const char PILL('*');
 // defining the command letters to move the spot on the maze
 const int  UP(72);			// up arrow
 const int  DOWN(80); 		// down arrow
 const int  RIGHT(77);		// right arrow
 const int  LEFT(75);		// left arrow
+// defining numerical constants
+const int MAXPILLS(8);
 // defining the other command letters
 const char QUIT('Q');		// to end the game
 
@@ -66,7 +70,6 @@ int main()
 	void updateGrid(char g[][SIZEX], const char m[][SIZEX], const Item spot);
 	void endProgram();
 	void getTime(struct tm &timeLocal);
-	string convertTime();
 
 	// local variable declarations 
 	char grid[SIZEY][SIZEX];			// grid for display
@@ -107,11 +110,13 @@ void initialiseGame(char grid[][SIZEX], char maze[][SIZEX], Item& spot)
 	// initialise grid and place spot in middle
 	void setInitialMazeStructure(char maze[][SIZEX]);
 	void setSpotInitialCoordinates(Item& spot, char[][SIZEX]);
+	void createPills(char[][SIZEX]);
 	void updateGrid(char g[][SIZEX], const char m[][SIZEX], Item b);
 
 	setInitialMazeStructure(maze);		// initialise maze
 	setSpotInitialCoordinates(spot, maze);
-	updateGrid(grid, maze, spot);		// prepare grid
+	createPills(maze);
+	updateGrid(grid, maze, spot);		// prepare grid	
 }
 
 void setSpotInitialCoordinates(Item& spot, char maze[][SIZEX])
@@ -151,6 +156,22 @@ void setInitialMazeStructure(char maze[][SIZEX])
 	for (int row(0); row < SIZEY; ++row)
 		for (int col(0); col < SIZEX; ++col)
 			maze[row][col] = (col == 0 || col == SIZEX - 1 || row == 0 || row == SIZEY - 1) ? WALL : TUNNEL;
+}
+
+void createPills(char maze[][SIZEX])
+{
+	void placeItem(char[][SIZEX], Item);
+	for (int pillCount = 0; pillCount < MAXPILLS; pillCount++)
+	{
+		vector<Item> pills;
+		Item pill;
+		do
+		{
+			pill = { Random(SIZEX), Random(SIZEY), PILL };
+		} while (maze[pill.x][pill.y] != TUNNEL);
+		pills.push_back(pill);
+		placeItem(maze, pill);
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -294,7 +315,7 @@ void showMessage(const WORD backColour, const WORD textColour, int x, int y, con
 
 void paintGame(const char g[][SIZEX], string mess)
 {
-	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+	string convertTime();
 	// display game title, messages, maze, spot and other items on screen
 	string tostring(char x);
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string message);
@@ -303,13 +324,16 @@ void paintGame(const char g[][SIZEX], string mess)
 	showMessage(clDarkGreen, clGreen, 0, 0, "___GAME___");
 	// TODO - Date and time should be displayed from the system
 	string time = convertTime();
-	showMessage(clYellow, clBlue, 40, 0, time);
-	showMessage(clYellow, clBlue, 40, 0, "FoP Task 1c: February 2018");
+	showMessage(clYellow, clBlue, 40, 1, time);
+	showMessage(clYellow, clBlue, 40, 2, "FoP Task 1c: February 2018");
 	// display Group number, and members onscreen.
-	showMessage(clWhite, clRed, 40, 4, "CS4G1a - Charlie Batten, Matt Bellamy, Nico Caruana           ");
+	showMessage(clWhite, clRed, 40, 4, "CS4G1a - Charlie Batten");
+	showMessage(clWhite, clRed, 40, 5, "         Matt Bellamy");
+	showMessage(clWhite, clRed, 40, 6, "         Nico Caruana");
+
 	// display menu options available
-	showMessage(clRed, clGreen, 40, 3, "TO MOVE USE KEYBOARD ARROWS ");
-	showMessage(clRed, clGreen, 40, 4, "TO QUIT ENTER 'Q'           ");
+	showMessage(clRed, clGreen, 40, 8, "TO MOVE USE KEYBOARD ARROWS ");
+	showMessage(clRed, clGreen, 40, 9, "TO QUIT ENTER 'Q'           ");
 
 	// print auxiliary messages if any
 	showMessage(clBlack, clYellow, 40, 8, mess);	// display current message
