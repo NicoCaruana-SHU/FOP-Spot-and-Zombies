@@ -17,6 +17,7 @@
 #include <cassert> 
 #include <string>
 #include <sstream>
+#include <time.h> // For time display
 
 using namespace std;
 
@@ -64,6 +65,8 @@ int main()
 	void updateGameData(const char g[][SIZEX], Item& spot, const int key, string& mess);
 	void updateGrid(char g[][SIZEX], const char m[][SIZEX], const Item spot);
 	void endProgram();
+	void getTime(struct tm &timeLocal);
+	string convertTime();
 
 	// local variable declarations 
 	char grid[SIZEY][SIZEX];			// grid for display
@@ -79,8 +82,8 @@ int main()
 	int key;							// current key selected by player
 	do 
 	{
-		// TODO - command letters should not be case sensitive
-		key = getKeyPress(); 	// read in  selected key: arrow or letter command
+
+		key = toupper(getKeyPress()); 	// read in  selected key: arrow or letter command
 		if (isArrowKey(key))
 		{
 			updateGameData(grid, spot, key, message);		// move spot in that direction
@@ -297,8 +300,11 @@ void paintGame(const char g[][SIZEX], string mess)
 	// display game title
 	showMessage(clBlack, clYellow, 0, 0, "___GAME___");
 	// TODO - Date and time should be displayed from the system
+	string time = convertTime();
+	showMessage(clWhite, clRed, 40, 0, time);
 	showMessage(clWhite, clRed, 40, 0, "FoP Task 1c: February 2018");
-
+	// display Group number, and members onscreen.
+	showMessage(clWhite, clRed, 40, 4, "CS4G1a - Charlie Batten, Matt Bellamy, Nico Caruana           ");
 	// display menu options available
 	showMessage(clRed, clYellow, 40, 3, "TO MOVE USE KEYBOARD ARROWS ");
 	showMessage(clRed, clYellow, 40, 4, "TO QUIT ENTER 'Q'           ");
@@ -306,7 +312,7 @@ void paintGame(const char g[][SIZEX], string mess)
 	// print auxiliary messages if any
 	showMessage(clBlack, clWhite, 40, 8, mess);	// display current message
 
-	// TODO - Show your course, your group number and names on screen
+
 
 	// display grid contents
 	paintGrid(g);
@@ -331,4 +337,54 @@ void endProgram()
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string message);
 	showMessage(clRed, clYellow, 40, 8, "");	
 	system("pause");	// hold output screen until a keyboard key is hit
+}
+
+
+
+string convertTime() { 
+	void getTime(struct tm &timeLocal);
+
+	assert(true);
+	struct tm timeLocal; // create time structure called timeLocal
+	getTime(timeLocal); //populate structure with values
+
+	cout << timeLocal.tm_mday << " "; //timeLocal.tm_day is an int 1-31
+
+	switch (timeLocal.tm_mon) { // timeLocal.tm_mon is an int from 0-11
+	case 0:
+		cout << "January"; break;
+	case 1:
+		cout << "February"; break;
+	case 2:
+		cout << "March"; break;
+	case 3:
+		cout << "April"; break;
+	case 4:
+		cout << "May"; break;
+	case 5:
+		cout << "June"; break;
+	case 6:
+		cout << "July"; break;
+	case 7:
+		cout << "August"; break;
+	case 8:
+		cout << "September"; break;
+	case 9:
+		cout << "October"; break;
+	case 10:
+		cout << "November"; break;
+	case 11:
+		cout << "December"; break;
+	}
+ //timeLocal.tm_year is int, years since 1900
+	return " " + (timeLocal.tm_year + 1900) + ',' + timeLocal.tm_hour + ':' + timeLocal.tm_min + ':' + timeLocal.tm_sec + '\n';
+}
+
+void getTime(struct tm &timeLocal) { // Get raw time data from system.
+
+	assert(true);
+	time_t rawTime; // create time_t variable to store raw time data
+	time(&rawTime); // get raw time data (in seconds from Jan 1 1970) and insert into rawtime variable.
+
+	localtime_s(&timeLocal, &rawTime); //convert raw time into usable time structure and insert into struct timeLocal
 }
