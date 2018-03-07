@@ -1,3 +1,4 @@
+// TODO My tasks, code the holes and the cheats.!!! Fix the fucking time!
 // ---------------------------------------------------------------------------
 // Program: Skeleton for Task 1c – group assignment
 // Author: Pascale Vacher
@@ -65,8 +66,7 @@ int main()
 	void updateGameData(const char g[][SIZEX], Item& spot, const int key, string& mess);
 	void updateGrid(char g[][SIZEX], const char m[][SIZEX], const Item spot);
 	void endProgram();
-	void getTime(struct tm &timeLocal);
-	string convertTime();
+	
 
 	// local variable declarations 
 	char grid[SIZEY][SIZEX];			// grid for display
@@ -294,6 +294,9 @@ void showMessage(const WORD backColour, const WORD textColour, int x, int y, con
 
 void paintGame(const char g[][SIZEX], string mess)
 {
+	string getConvertedTime();
+
+
 	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 	// display game title, messages, maze, spot and other items on screen
 	string tostring(char x);
@@ -301,10 +304,10 @@ void paintGame(const char g[][SIZEX], string mess)
 	void paintGrid(const char g[][SIZEX]);
 	// display game title
 	showMessage(clDarkGreen, clGreen, 0, 0, "___GAME___");
-	// TODO - Date and time should be displayed from the system
-	string time = convertTime();
-	showMessage(clYellow, clBlue, 40, 0, time);
-	showMessage(clYellow, clBlue, 40, 0, "FoP Task 1c: February 2018");
+	// TODO - Date and time should be displayed from the system - string not being passed properly.
+
+	showMessage(clYellow, clBlue, 40, 0, getConvertedTime());
+	showMessage(clYellow, clBlue, 40, 2, "FoP Task 1c: February 2018");
 	// display Group number, and members onscreen.
 	showMessage(clWhite, clRed, 40, 4, "CS4G1a - Charlie Batten, Matt Bellamy, Nico Caruana           ");
 	// display menu options available
@@ -343,49 +346,51 @@ void endProgram()
 
 
 
-string convertTime() { 
+string getConvertedTime() { 
 	void getTime(struct tm &timeLocal);
 
 	assert(true);
 	struct tm timeLocal; // create time structure called timeLocal
 	getTime(timeLocal); //populate structure with values
 
-	cout << timeLocal.tm_mday << " "; //timeLocal.tm_day is an int 1-31
+	//cout << timeLocal.tm_mday << " "; //timeLocal.tm_day is an int 1-31
 
-	switch (timeLocal.tm_mon) { // timeLocal.tm_mon is an int from 0-11
-	case 0:
-		cout << "January"; break;
-	case 1:
-		cout << "February"; break;
-	case 2:
-		cout << "March"; break;
-	case 3:
-		cout << "April"; break;
-	case 4:
-		cout << "May"; break;
-	case 5:
-		cout << "June"; break;
-	case 6:
-		cout << "July"; break;
-	case 7:
-		cout << "August"; break;
-	case 8:
-		cout << "September"; break;
-	case 9:
-		cout << "October"; break;
-	case 10:
-		cout << "November"; break;
-	case 11:
-		cout << "December"; break;
-	}
+	//switch (timeLocal.tm_mon) { // timeLocal.tm_mon is an int from 0-11
+	//case 0:
+	//	cout << "January"; break;
+	//case 1:
+	//	cout << "February"; break;
+	//case 2:
+	//	cout << "March"; break;
+	//case 3:
+	//	cout << "April"; break;
+	//case 4:
+	//	cout << "May"; break;
+	//case 5:
+	//	cout << "June"; break;
+	//case 6:
+	//	cout << "July"; break;
+	//case 7:
+	//	cout << "August"; break;
+	//case 8:
+	//	cout << "September"; break;
+	//case 9:
+	//	cout << "October"; break;
+	//case 10:
+	//	cout << "November"; break;
+	//case 11:
+	//	cout << "December"; break;
+	//}
  //timeLocal.tm_year is int, years since 1900
-	return " " + (timeLocal.tm_year + 1900) + ',' + timeLocal.tm_hour + ':' + timeLocal.tm_min + ':' + timeLocal.tm_sec + '\n';
+	string time;
+	time += ' ' + (timeLocal.tm_year + 1900) + ',' + timeLocal.tm_hour + ':' + timeLocal.tm_min + ':' + timeLocal.tm_sec;
+	return time;
 }
 
 void getTime(struct tm &timeLocal) { // Get raw time data from system.
 
 	assert(true);
-	time_t rawTime; // create time_t variable to store raw time data
+	time_t rawTime; // create time_t struct variable to store raw time data
 	time(&rawTime); // get raw time data (in seconds from Jan 1 1970) and insert into rawtime variable.
 
 	localtime_s(&timeLocal, &rawTime); //convert raw time into usable time structure and insert into struct timeLocal
