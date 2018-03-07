@@ -61,7 +61,7 @@ struct Item
 int main()
 {
 	// function declarations (prototypes)
-	void initialiseGame(char g[][SIZEX], char m[][SIZEX], Item& spot);
+	void initialiseGame(char g[][SIZEX], char m[][SIZEX], Item& spot, vector<Item> &pills);
 	void paintGame(const char g[][SIZEX], string mess);
 	bool wantsToQuit(const int key);
 	bool isArrowKey(const int k);
@@ -74,13 +74,14 @@ int main()
 	// local variable declarations 
 	char grid[SIZEY][SIZEX];			// grid for display
 	char maze[SIZEY][SIZEX];			// structure of the maze
+	vector<Item> pills;
 	Item spot = { 0, 0, SPOT }; 		// spot's position and symbol
 	string message("LET'S START...");	// current message to player
 
 	// action...
 	Seed();								// seed the random number generator
 	SetConsoleTitle("Spot and Zombies Game - FoP 2017-18");
-	initialiseGame(grid, maze, spot);	// initialise grid (incl. walls and spot)
+	initialiseGame(grid, maze, spot, pills);	// initialise grid (incl. walls and spot)
 	paintGame(grid, message);			// display game info, modified grid and messages
 	int key;							// current key selected by player
 	do 
@@ -105,17 +106,17 @@ int main()
 // ----- initialise game state
 // ---------------------------------------------------------------------------
 
-void initialiseGame(char grid[][SIZEX], char maze[][SIZEX], Item& spot)
+void initialiseGame(char grid[][SIZEX], char maze[][SIZEX], Item& spot, vector<Item> &pills)
 {
 	// initialise grid and place spot in middle
 	void setInitialMazeStructure(char maze[][SIZEX]);
 	void setSpotInitialCoordinates(Item& spot, char[][SIZEX]);
-	void createPills(char[][SIZEX]);
+	void createPills(char[][SIZEX], vector<Item> &pills);
 	void updateGrid(char g[][SIZEX], const char m[][SIZEX], Item b);
 
 	setInitialMazeStructure(maze);		// initialise maze
 	setSpotInitialCoordinates(spot, maze);
-	createPills(maze);
+	createPills(maze, pills);
 	updateGrid(grid, maze, spot);		// prepare grid	
 }
 
@@ -158,12 +159,11 @@ void setInitialMazeStructure(char maze[][SIZEX])
 			maze[row][col] = (col == 0 || col == SIZEX - 1 || row == 0 || row == SIZEY - 1) ? WALL : TUNNEL;
 }
 
-void createPills(char maze[][SIZEX])
+void createPills(char maze[][SIZEX], vector<Item> &pills)
 {
 	void placeItem(char[][SIZEX], Item);
 	for (int pillCount = 0; pillCount < MAXPILLS; pillCount++)
 	{
-		vector<Item> pills;
 		Item pill;
 		do
 		{
