@@ -31,23 +31,27 @@ using namespace std;
 // ---------------------------------------------------------------------------
 
 // defining the size of the grid
-const int  SIZEX(25);    	// horizontal dimension
-const int  SIZEY(20);		// vertical dimension
+const int  SIZEX(25);    		// horizontal dimension
+const int  SIZEY(20);			// vertical dimension
 // defining symbols used for display of the grid and content
-const char SPOT('@');   	// spot
-const char TUNNEL(' ');    	// tunnel
-const char WALL('#');    	// border
+const char SPOT('@');   		// spot
+const char TUNNEL(' ');			// tunnel
+const char WALL('#');    		// border
+const char HOLE('0');			// Character used to represent holes
 // defining the command letters to move the spot on the maze
-const int  UP(72);			// up arrow
-const int  DOWN(80); 		// down arrow
-const int  RIGHT(77);		// right arrow
-const int  LEFT(75);		// left arrow
+const int  UP(72);				// up arrow
+const int  DOWN(80); 			// down arrow
+const int  RIGHT(77);			// right arrow
+const int  LEFT(75);			// left arrow
 // defining the other command letters
-const char QUIT('Q');		// to end the game
+const char QUIT('Q');			// to end the game
+const char FREEZE('F');			// Cheat command 1, to freeze the zombies in place.
+const char EXTERMINATE('X');	// Cheat command 2, eliminate all zombies
+const char EAT('E');			// Cheat command 3, eat all remaining pills.
 
 // 
 
-struct Item 
+struct Item
 {
 	int x, y;
 	char symbol;
@@ -60,15 +64,15 @@ struct Item
 int main()
 {
 	// function declarations (prototypes)
-	void initialiseGame(char g[][SIZEX], char m[][SIZEX], Item& spot);
+	void initialiseGame(char g[][SIZEX], char m[][SIZEX], Item& spot, int numberOfHoles, Item holes[]);
 	void paintGame(const char g[][SIZEX], string mess);
 	bool wantsToQuit(const int key);
 	bool isArrowKey(const int k);
 	int  getKeyPress();
 	void updateGameData(const char g[][SIZEX], Item& spot, const int key, string& mess);
-	void updateGrid(char g[][SIZEX], const char m[][SIZEX], const Item spot);
+	void updateGrid(char g[][SIZEX], const char m[][SIZEX], const Item spot, int maxHoles, Item holes[]);
 	void endProgram();
-	
+
 
 	// local variable declarations 
 	char grid[SIZEY][SIZEX];			// grid for display
@@ -76,23 +80,43 @@ int main()
 	Item spot = { 0, 0, SPOT }; 		// spot's position and symbol
 	string message("LET'S START...");	// current message to player
 
+	// Hole placement related variables - will need to change when we add difficulty levels
+	const int numberOfHoles(12);
+	Item holes[numberOfHoles];
+
+
 	// action...
 	Seed();								// seed the random number generator
 	SetConsoleTitle("Spot and Zombies Game - FoP 2017-18");
-	initialiseGame(grid, maze, spot);	// initialise grid (incl. walls and spot)
+	initialiseGame(grid, maze, spot, numberOfHoles, holes);	// initialise grid (incl. walls and spot)
 	paintGame(grid, message);			// display game info, modified grid and messages
 	int key;							// current key selected by player
-	do 
+	do
 	{
-
 		key = toupper(getKeyPress()); 	// read in  selected key: arrow or letter command
 		if (isArrowKey(key))
 		{
 			updateGameData(grid, spot, key, message);		// move spot in that direction
-			updateGrid(grid, maze, spot);					// update grid information
+			updateGrid(grid, maze, spot, numberOfHoles, holes);					// update grid information
 		}
-		else
-			message = "INVALID KEY!";	// set 'Invalid key' message
+		else {
+			switch (key) {
+			case FREEZE:
+				//TODO STUB - Freeze the zombies in place
+				break;
+			case EXTERMINATE:
+				//TODO STUB - Exterminate all zombies on screen, pressing again respawns them back at corners
+				break;
+			case EAT:
+				//TODO STUB - Eat all pills. Permanently disappear from the board and numremainingpills set to 0;
+				break;
+			case QUIT:
+				break; //Maybe do something here.. put it in for now to simply get rid of the invalid key message before terminating loop on quit command.
+
+			default:
+				message = "INVALID KEY!";	// set 'Invalid key' message
+			}
+		}
 		paintGame(grid, message);		// display game info, modified grid and messages
 	} while (!wantsToQuit(key));		// while user does not want to quit
 	endProgram();						// display final message
@@ -104,16 +128,18 @@ int main()
 // ----- initialise game state
 // ---------------------------------------------------------------------------
 
-void initialiseGame(char grid[][SIZEX], char maze[][SIZEX], Item& spot)
+void initialiseGame(char grid[][SIZEX], char maze[][SIZEX], Item& spot, int numberOfHoles, Item holes[])
 {
 	// initialise grid and place spot in middle
 	void setInitialMazeStructure(char maze[][SIZEX]);
 	void setSpotInitialCoordinates(Item& spot, char[][SIZEX]);
-	void updateGrid(char g[][SIZEX], const char m[][SIZEX], Item b);
+	void updateGrid(char g[][SIZEX], const char m[][SIZEX], Item b, int maxHoles, Item holes[]);
+	void setHoleInitialPosition(char maze[][SIZEX], int maxHoles, Item holes[]);
 
 	setInitialMazeStructure(maze);		// initialise maze
+	setHoleInitialPosition(maze, numberOfHoles, holes);
 	setSpotInitialCoordinates(spot, maze);
-	updateGrid(grid, maze, spot);		// prepare grid
+	updateGrid(grid, maze, spot, numberOfHoles, holes);		// prepare grid
 }
 
 void setSpotInitialCoordinates(Item& spot, char maze[][SIZEX])
@@ -123,7 +149,7 @@ void setSpotInitialCoordinates(Item& spot, char maze[][SIZEX])
 	spot.x = Random(SIZEX - 2);      // horizontal coordinate in range [1..(SIZEX - 2)]
 	if (maze[spot.x][spot.y] != TUNNEL)
 		setSpotInitialCoordinates(spot, maze);
-} 
+}
 
 void setInitialMazeStructure(char maze[][SIZEX])
 {
@@ -139,7 +165,7 @@ void setInitialMazeStructure(char maze[][SIZEX])
 		{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
 		{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
 		{ '#', '#', '#', '#', '#', '#', '#', '#', '#', '#' } };
-	// with '#' for wall, ' ' for tunnel, etc. 
+	// with '#' for wall, ' ' for tunnel, etc.
 	// copy into maze structure with appropriate symbols
 	for (int row(0); row < SIZEY; ++row)
 		for (int col(0); col < SIZEX; ++col)
@@ -155,22 +181,43 @@ void setInitialMazeStructure(char maze[][SIZEX])
 			maze[row][col] = (col == 0 || col == SIZEX - 1 || row == 0 || row == SIZEY - 1) ? WALL : TUNNEL;
 }
 
+//TODO Hole assignment function
+// IN: Array representing the maze, Amount of holes to use, Array to hold the hole items.
+// OUT:
+// Precondition: None
+// Postcondition: All holes will be assigned an x and y coord, ready to insert into grid
+void setHoleInitialPosition(char maze[][SIZEX], int maxHoles, Item holes[]) {
+	void setSpotInitialCoordinates(Item& spot, char maze[][SIZEX]);
+
+	for (int i(maxHoles - 1); i >= 0; --i) { // place holes until max is reached
+		Item h = { 0,0, HOLE };
+		setSpotInitialCoordinates(h, maze);
+		holes[i] = h;
+	}
+	// Could have just set the holes into the base maze directly to render faster.
+	// Doing it this way allows us the option to move the holes ingame if we need to - additional functionality? :)
+}
+
+
+
 // ---------------------------------------------------------------------------
 // ----- update grid state
 // ---------------------------------------------------------------------------
 
-void updateGrid(char grid[][SIZEX], const char maze[][SIZEX], const Item spot)
+void updateGrid(char grid[][SIZEX], const char maze[][SIZEX], const Item spot, int maxHoles, Item holes[])
 {
 	// update grid configuration after each move
 	void setMaze(char g[][SIZEX], const char b[][SIZEX]);
 	void placeItem(char g[][SIZEX], const Item spot);
+	void placeHoles(char g[][SIZEX], int maxHoles, Item holes[]);
 
 	setMaze(grid, maze);	// reset the empty maze configuration into grid
+	placeHoles(grid, maxHoles, holes);
 	placeItem(grid, spot);	// set spot in grid
 }
 
 void setMaze(char grid[][SIZEX], const char maze[][SIZEX])
-{	
+{
 	// reset the empty/fixed maze configuration into grid
 	for (int row(0); row < SIZEY; ++row)
 		for (int col(0); col < SIZEX; ++col)
@@ -181,6 +228,21 @@ void placeItem(char g[][SIZEX], const Item item)
 {
 	// place item at its new position in grid
 	g[item.y][item.x] = item.symbol;
+}
+
+// Hole placement function
+// IN: Array representing the maze, Amount of holes to use, Array holding the hole items.
+// OUT:
+// Precondition: None
+// Postcondition: All holes will be placed on grid
+
+// TODO Could probably wrap numberofholes and array of holes together in a struct for ease of passing data.
+void placeHoles(char g[][SIZEX], int maxHoles, Item holes[]) {
+	void placeItem(char g[][SIZEX], const Item item);
+
+	for (int i(maxHoles - 1); i >= 0; --i) { // place holes until max is reached
+		placeItem(g, holes[i]);
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -204,13 +266,13 @@ void updateGameData(const char g[][SIZEX], Item& spot, const int key, string& me
 	switch (g[spot.y + dy][spot.x + dx])
 	{
 		// ...depending on what's on the target position in grid...
-		case TUNNEL:		// can move
-			spot.y += dy;	// go in that Y direction
-			spot.x += dx;	// go in that X direction
-			break;
-		case WALL:  		// hit a wall and stay there
-			mess = "CANNOT GO THERE!";
-			break;
+	case TUNNEL:		// can move
+		spot.y += dy;	// go in that Y direction
+		spot.x += dx;	// go in that X direction
+		break;
+	case WALL:  		// hit a wall and stay there
+		mess = "CANNOT GO THERE!";
+		break;
 	}
 }
 // ---------------------------------------------------------------------------
@@ -223,22 +285,22 @@ void setKeyDirection(const int key, int& dx, int& dy)
 	assert(isArrowKey(key));
 	switch (key)	// ...depending on the selected key...
 	{
-		case LEFT:  	// when LEFT arrow pressed...
-			dx = -1;	// decrease the X coordinate
-			dy = 0;
-			break;
-		case RIGHT: 	// when RIGHT arrow pressed...
-			dx = +1;	// increase the X coordinate
-			dy = 0;
-			break;
-		case UP:
-			dx = 0;
-			dy = -1;
-			break;
-		case DOWN:
-			dx = 0;
-			dy = +1;
-			break;
+	case LEFT:  	// when LEFT arrow pressed...
+		dx = -1;	// decrease the X coordinate
+		dy = 0;
+		break;
+	case RIGHT: 	// when RIGHT arrow pressed...
+		dx = +1;	// increase the X coordinate
+		dy = 0;
+		break;
+	case UP:
+		dx = 0;
+		dy = -1;
+		break;
+	case DOWN:
+		dx = 0;
+		dy = +1;
+		break;
 	}
 }
 
@@ -277,7 +339,7 @@ string tostring(int x)
 	return os.str();
 }
 
-string tostring(char x) 
+string tostring(char x)
 {
 	// convert a char to a string
 	std::ostringstream os;
@@ -342,7 +404,7 @@ void paintGrid(const char g[][SIZEX])
 void endProgram()
 {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string message);
-	showMessage(clRed, clYellow, 40, 8, "");	
+	showMessage(clRed, clYellow, 40, 8, "");
 	system("pause");	// hold output screen until a keyboard key is hit
 }
 
@@ -351,7 +413,7 @@ void endProgram()
 // OUT:
 // Precondition:
 // Postcondition: Date and time will be displayed on consecutive lines in the specified colours.
-void displayTimeAndDate(const WORD firstColour, const WORD secondColour, const int x, const int y) { 
+void displayTimeAndDate(const WORD firstColour, const WORD secondColour, const int x, const int y) {
 	void getTime(struct tm &timeLocal);
 
 	assert(true); // TODO Assert needs sorting, although probably wont be needed, function is simple enough to run
@@ -360,14 +422,14 @@ void displayTimeAndDate(const WORD firstColour, const WORD secondColour, const i
 
 	std::ostringstream date;
 	date << setfill('0');
-	date << "DATE: " << setw(2) << timeLocal.tm_mday << "/" << setw(2) << timeLocal.tm_mon << "/" << (timeLocal.tm_year+1900); //timeLocal.tm_year is int, years since 1900
+	date << "DATE: " << setw(2) << timeLocal.tm_mday << "/" << setw(2) << timeLocal.tm_mon << "/" << (timeLocal.tm_year + 1900); //timeLocal.tm_year is int, years since 1900
 
 	std::ostringstream time;
 	time << setfill('0');
 	time << "TIME: " << setw(2) << timeLocal.tm_hour << ":" << setw(2) << timeLocal.tm_min << ":" << setw(2) << timeLocal.tm_sec;
 
 	showMessage(firstColour, secondColour, x, y, date.str()); // show the date at the co-oridinates given.
-	showMessage(firstColour, secondColour, x, y+1, time.str()); // display  time on the following line directly underneath.
+	showMessage(firstColour, secondColour, x, y + 1, time.str()); // display  time on the following line directly underneath.
 	return;
 }
 
@@ -377,7 +439,7 @@ void displayTimeAndDate(const WORD firstColour, const WORD secondColour, const i
 // Postcondition: Supplied struct will be filled with converted time data.
 void getTime(struct tm &timeLocal) { // Get raw time data from system and convert it to usable format.
 
-	assert(true); 
+	assert(true);
 	time_t rawTime; // create time_t struct variable to store raw time data
 	time(&rawTime); // get raw time data (in seconds from Jan 1 1970) and insert into rawtime variable.
 
