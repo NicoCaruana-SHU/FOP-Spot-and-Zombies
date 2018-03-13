@@ -188,14 +188,38 @@ void setInitialMazeStructure(char maze[][SIZEX])
 // Postcondition: All holes will be assigned an x and y coord, ready to insert into grid
 void setHoleInitialPosition(char maze[][SIZEX], int maxHoles, Item holes[]) {
 	void setSpotInitialCoordinates(Item& spot, char maze[][SIZEX]);
+	bool isPositionUnique(int i, const Item& item, Item array[]);
 
-	for (int i(maxHoles - 1); i >= 0; --i) { // place holes until max is reached
-		Item h = { 0,0, HOLE };
-		setSpotInitialCoordinates(h, maze);
+	for (int i =0; i < maxHoles; ++i) {			// place holes until max is reached .
+		Item h = { 0,0, HOLE };					// Loop used here increments rather than decrements so that the 
+		setSpotInitialCoordinates(h, maze);		// following Array comparision function doesnt have to take the array size variable.
+		while (!isPositionUnique(i, h, holes))
+		{
+			setSpotInitialCoordinates(h, maze);
+		}
 		holes[i] = h;
 	}
 	// Could have just set the holes into the base maze directly to render faster.
 	// Doing it this way allows us the option to move the holes ingame if we need to - additional functionality? :)
+}
+
+// TODO Array comparison function. Quite inefficient to use, if you can think of a better way, let us know!
+// IN: Copy of intended position variable to use as iterator, const reference of the item to verify, Array of items to check uniqueness against.
+// OUT: TRUE if Item is unique, FALSE if item already present.
+// Precondition: 
+// Postcondition:
+bool isPositionUnique(int i, const Item& item, Item array[])
+{
+	bool inArray = false;
+	while ((i - 1 >= 0) && (!inArray)) {	// Checks against the previous item(s) added to the array. Flag used to terminate loop early if found
+		if (item.x == array[i].x) {			// First property checked for equal value.
+			if (item.y == array[i].y) {		// Second property checked if the first was a match.
+				inArray = true;
+			}
+		}
+		--i;
+	}
+	return !inArray;
 }
 
 
