@@ -1,4 +1,5 @@
 // TODO My tasks, code the holes and the cheats.!!!
+// TODO Change holes to vector.
 // ---------------------------------------------------------------------------
 // Program: Skeleton for Task 1c – group assignment
 // Author: Pascale Vacher
