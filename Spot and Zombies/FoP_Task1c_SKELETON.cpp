@@ -74,13 +74,13 @@ int main()
 {
 	// function declarations (prototypes)
 	void displayEntryScreen();
-	void initialiseGame(char g[][SIZEX], char m[][SIZEX], Item& spot, int numberOfHoles, Item holes[], vector<Item> &pills);
+	void initialiseGame(char g[][SIZEX], char m[][SIZEX], Item& spot, int numberOfHoles, vector<Item> holes, vector<Item> &pills);
 	void paintGame(const char g[][SIZEX], string mess);
 	bool wantsToQuit(const int key);
 	bool isArrowKey(const int k);
 	int  getKeyPress();
 	void updateGameData(const char g[][SIZEX], Item& spot, const int key, string& mess);
-	void updateGrid(char g[][SIZEX], const char m[][SIZEX], const Item spot, int maxHoles, Item holes[]);
+	void updateGrid(char g[][SIZEX], const char m[][SIZEX], const Item& spot, const vector<Item>& holes);
 	void endProgram();
 	void getTime(struct tm &timeLocal);
 
@@ -97,9 +97,7 @@ int main()
 
 	// Hole placement related variables - will need to change when we add difficulty levels
 	const int numberOfHoles(12);
-
-
-
+	
 	// action...
 	Seed();								// seed the random number generator
 	SetConsoleTitle("Spot and Zombies Game - FoP 2017-18");
@@ -114,7 +112,7 @@ int main()
 		if (isArrowKey(key))
 		{
 			updateGameData(grid, spot, key, message);		// move spot in that direction
-			updateGrid(grid, maze, spot, numberOfHoles, holes);					// update grid information
+			updateGrid(grid, maze, spot, holes);					// update grid information
 		}
 		else {
 			switch (key) {
@@ -145,20 +143,20 @@ int main()
 // ----- initialise game state
 // ---------------------------------------------------------------------------
 
-void initialiseGame(char grid[][SIZEX], char maze[][SIZEX], Item& spot, int numberOfHoles, Item holes[], vector<Item> &pills)
+void initialiseGame(char grid[][SIZEX], char maze[][SIZEX], Item& spot, int numberOfHoles, vector<Item> holes, vector<Item> &pills)
 {
 	// initialise grid and place spot in middle
 	void setInitialMazeStructure(char maze[][SIZEX]);
 	void setSpotInitialCoordinates(Item& spot, char[][SIZEX]);
-	void updateGrid(char g[][SIZEX], const char m[][SIZEX], Item b, int maxHoles, Item holes[]);
-	void setHoleInitialPosition(char maze[][SIZEX], int maxHoles, Item holes[]);
-	void createPills(char[][SIZEX], vector<Item> &pills);
+	void updateGrid(char g[][SIZEX], const char m[][SIZEX], const Item& b, const vector<Item>& holes);
+	void setHoleInitialPosition(char maze[][SIZEX], int maxHoles, vector<Item>& holes);
+	void createPills(char[][SIZEX], vector<Item>& pills);
 
 	setInitialMazeStructure(maze);		// initialise maze
 	setHoleInitialPosition(maze, numberOfHoles, holes);
 	setSpotInitialCoordinates(spot, maze);
 	createPills(maze, pills);
-	updateGrid(grid, maze, spot, numberOfHoles, holes);		// prepare grid
+	updateGrid(grid, maze, spot, holes);		// prepare grid
 }
 
 void setSpotInitialCoordinates(Item& spot, char maze[][SIZEX])
@@ -205,18 +203,20 @@ void setInitialMazeStructure(char maze[][SIZEX])
 // OUT:
 // Precondition: None
 // Postcondition: All holes will be assigned an x and y coord, ready to insert into grid
-void setHoleInitialPosition(char maze[][SIZEX], int maxHoles, Item holes[]) {
+void setHoleInitialPosition(char maze[][SIZEX], int maxHoles, vector<Item>& holes) {
 	void setSpotInitialCoordinates(Item& spot, char maze[][SIZEX]);
-	bool isPositionUnique(int i, const Item& item, Item array[]);
+	//bool isPositionUnique(int i, const Item& item, const vector<Item>& array);
+	void placeItem(char g[][SIZEX], const Item& item);
 
 	for (int i = 0; i < maxHoles; ++i) {			// place holes until max is reached .
 		Item h = { 0,0, HOLE };						// Loop used here increments rather than decrements so that the 
 		setSpotInitialCoordinates(h, maze);			// following Array comparision function doesnt have to take the array size variable.
-		while (!isPositionUnique(i, h, holes))		// TODO Still having issue where spot can spawn on hole location.
-		{											// Will probably need fixing in the spot placement function though.
-			setSpotInitialCoordinates(h, maze);
-		}
-		holes[i] = h;
+		//while (!isPositionUnique(i, h, holes))		// TODO Still having issue where spot can spawn on hole location.
+		//{											// Will probably need fixing in the spot placement function though.
+		//	setSpotInitialCoordinates(h, maze);
+		//}
+		holes.push_back(h);
+		placeItem(maze, h);
 	}
 	// Could have just set the holes into the base maze directly to render faster.
 	// Doing it this way allows us the option to move the holes ingame if we need to - additional functionality? :)
@@ -227,7 +227,7 @@ void setHoleInitialPosition(char maze[][SIZEX], int maxHoles, Item holes[]) {
 // OUT: TRUE if Item is unique, FALSE if item already present.
 // Precondition: 
 // Postcondition:
-bool isPositionUnique(int i, const Item& item, Item array[])
+bool isPositionUnique(int i, const Item& item, const vector<Item>& array)
 {
 	bool inArray = false;
 	while ((i - 1 >= 0) && (!inArray)) {	// Checks against the previous item(s) added to the array. Flag used to terminate loop early if found
@@ -241,9 +241,9 @@ bool isPositionUnique(int i, const Item& item, Item array[])
 	return !inArray;
 }
 
-void createPills(char maze[][SIZEX], vector<Item> &pills)
+void createPills(char maze[][SIZEX], vector<Item>& pills)
 {
-	void placeItem(char[][SIZEX], Item);
+	void placeItem(char[][SIZEX], const Item& item);
 	for (int pillCount = 0; pillCount < MAXPILLS; pillCount++)
 	{
 		Item pill;
@@ -262,15 +262,15 @@ void createPills(char maze[][SIZEX], vector<Item> &pills)
 // ----- update grid state
 // ---------------------------------------------------------------------------
 
-void updateGrid(char grid[][SIZEX], const char maze[][SIZEX], const Item spot, int maxHoles, Item holes[])
+void updateGrid(char grid[][SIZEX], const char maze[][SIZEX], const Item& spot, const vector<Item>& holes)
 {
 	// update grid configuration after each move
 	void setMaze(char g[][SIZEX], const char b[][SIZEX]);
-	void placeItem(char g[][SIZEX], const Item spot);
-	void placeHoles(char g[][SIZEX], int maxHoles, Item holes[]);
+	void placeItem(char g[][SIZEX], const Item& spot);
+	void placeHoles(char g[][SIZEX], const vector<Item>& holes);
 
 	setMaze(grid, maze);	// reset the empty maze configuration into grid
-	placeHoles(grid, maxHoles, holes);
+	placeHoles(grid, holes);
 	placeItem(grid, spot);	// set spot in grid
 }
 
@@ -282,23 +282,22 @@ void setMaze(char grid[][SIZEX], const char maze[][SIZEX])
 			grid[row][col] = maze[row][col];
 }
 
-void placeItem(char g[][SIZEX], const Item item)
+void placeItem(char g[][SIZEX], const Item& item)
 {
 	// place item at its new position in grid
 	g[item.y][item.x] = item.symbol;
 }
 
 // Hole placement function
-// IN: Array representing the maze, Amount of holes to use, Array holding the hole items.
+// IN: Array representing the maze, Vector holding the hole items.
 // OUT:
 // Precondition: None
 // Postcondition: All holes will be placed on grid
 
-// TODO Could probably wrap numberofholes and array of holes together in a struct for ease of passing data.
-void placeHoles(char g[][SIZEX], int maxHoles, Item holes[]) {
-	void placeItem(char g[][SIZEX], const Item item);
+void placeHoles(char g[][SIZEX], const vector<Item>& holes) {
+	void placeItem(char g[][SIZEX], const Item& item);
 
-	for (int i(maxHoles - 1); i >= 0; --i) { // place holes until max is reached
+	for (int i(holes.size() - 1); i >= 0; --i) { // place holes until max is reached
 		placeItem(g, holes[i]);
 	}
 }
@@ -477,7 +476,7 @@ void paintGame(const char g[][SIZEX], string mess)
 	showMessage(clRed, clGreen, 40, 9, "TO QUIT ENTER 'Q'           ");
 
 	// print auxiliary messages if any
-	showMessage(clBlack, clYellow, 40, 8, mess);	// display current message
+	showMessage(clBlack, clYellow, 40, 6, mess);	// display current message
 
 
 
