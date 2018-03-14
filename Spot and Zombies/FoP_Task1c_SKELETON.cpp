@@ -64,6 +64,7 @@ struct Item
 int main()
 {
 	// function declarations (prototypes)
+	void displayEntryScreen();
 	void initialiseGame(char g[][SIZEX], char m[][SIZEX], Item& spot, int numberOfHoles, Item holes[]);
 	void paintGame(const char g[][SIZEX], string mess);
 	bool wantsToQuit(const int key);
@@ -88,6 +89,8 @@ int main()
 	// action...
 	Seed();								// seed the random number generator
 	SetConsoleTitle("Spot and Zombies Game - FoP 2017-18");
+	displayEntryScreen();
+	cin.get(); // HACK temporarily hold display here to view entry screen.
 	initialiseGame(grid, maze, spot, numberOfHoles, holes);	// initialise grid (incl. walls and spot)
 	paintGame(grid, message);			// display game info, modified grid and messages
 	int key;							// current key selected by player
@@ -190,11 +193,11 @@ void setHoleInitialPosition(char maze[][SIZEX], int maxHoles, Item holes[]) {
 	void setSpotInitialCoordinates(Item& spot, char maze[][SIZEX]);
 	bool isPositionUnique(int i, const Item& item, Item array[]);
 
-	for (int i =0; i < maxHoles; ++i) {			// place holes until max is reached .
-		Item h = { 0,0, HOLE };					// Loop used here increments rather than decrements so that the 
-		setSpotInitialCoordinates(h, maze);		// following Array comparision function doesnt have to take the array size variable.
-		while (!isPositionUnique(i, h, holes))	// TODO Still having issue where spot can spawn on hole location.
-		{										// Will probably need fixing in the spot placement function though.
+	for (int i = 0; i < maxHoles; ++i) {			// place holes until max is reached .
+		Item h = { 0,0, HOLE };						// Loop used here increments rather than decrements so that the 
+		setSpotInitialCoordinates(h, maze);			// following Array comparision function doesnt have to take the array size variable.
+		while (!isPositionUnique(i, h, holes))		// TODO Still having issue where spot can spawn on hole location.
+		{											// Will probably need fixing in the spot placement function though.
 			setSpotInitialCoordinates(h, maze);
 		}
 		holes[i] = h;
@@ -380,6 +383,47 @@ void showMessage(const WORD backColour, const WORD textColour, int x, int y, con
 	cout << message;
 }
 
+// TODO Nico
+void showGameTitle(int x, int y) {
+	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string message);
+
+	showMessage(clDarkGrey, clYellow, x, y, "--------------------");
+	showMessage(clDarkGrey, clYellow, x, y + 1, "| SPOT AND ZOMBIES |");
+	showMessage(clDarkGrey, clYellow, x, y + 2, "--------------------");
+}
+
+// TODO Nico
+void showGroupMembers(int x, int y) {
+	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string message);
+
+	showMessage(clDarkGrey, clYellow, x, y, "GROUP CS4G1A  -  2017-18");
+	showMessage(clDarkGrey, clYellow, x, y + 1, "Charlie Batten  ");
+	showMessage(clDarkGrey, clYellow, x, y + 2, "Matt Bellamy    ");
+	showMessage(clDarkGrey, clYellow, x, y + 3, "Nico Caruana    27022205");
+}
+
+// TODO Nico
+// Entry screen display
+void displayEntryScreen() {
+	void showGameTitle(int x, int y);
+	void showGroupMembers(int x, int y);
+
+	showGameTitle(10, 6);
+	showGroupMembers(10, 10);
+
+}
+
+// TODO Nico
+// Clear screen
+void clearScreen() {
+
+}
+
+
+
+
+
+
 void paintGame(const char g[][SIZEX], string mess)
 {
 	void displayTimeAndDate(const WORD firstColour, const WORD secondColour, const int x, const int y);
@@ -396,8 +440,7 @@ void paintGame(const char g[][SIZEX], string mess)
 	displayTimeAndDate(clYellow, clBlue, 40, 0);
 
 	showMessage(clYellow, clBlue, 40, 2, "FoP Task 1c: February 2018");
-	// display Group number, and members onscreen.
-	showMessage(clWhite, clRed, 40, 6, "CS4G1a - Charlie Batten, Matt Bellamy, Nico Caruana           ");
+
 	// display menu options available
 	showMessage(clRed, clGreen, 40, 3, "TO MOVE USE KEYBOARD ARROWS ");
 	showMessage(clRed, clGreen, 40, 4, "TO QUIT ENTER 'Q'           ");
