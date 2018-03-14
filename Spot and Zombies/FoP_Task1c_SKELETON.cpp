@@ -193,8 +193,8 @@ void setHoleInitialPosition(char maze[][SIZEX], int maxHoles, Item holes[]) {
 	for (int i =0; i < maxHoles; ++i) {			// place holes until max is reached .
 		Item h = { 0,0, HOLE };					// Loop used here increments rather than decrements so that the 
 		setSpotInitialCoordinates(h, maze);		// following Array comparision function doesnt have to take the array size variable.
-		while (!isPositionUnique(i, h, holes))
-		{
+		while (!isPositionUnique(i, h, holes))	// TODO Still having issue where spot can spawn on hole location.
+		{										// Will probably need fixing in the spot placement function though.
 			setSpotInitialCoordinates(h, maze);
 		}
 		holes[i] = h;
