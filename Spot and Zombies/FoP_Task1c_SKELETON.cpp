@@ -62,6 +62,10 @@ struct Item
 	char symbol;
 };
 
+struct Spot : Item {
+	int lives;
+};
+
 // ---------------------------------------------------------------------------
 // ----- run game
 // ---------------------------------------------------------------------------
@@ -84,13 +88,16 @@ int main()
 	// local variable declarations 
 	char grid[SIZEY][SIZEX];			// grid for display
 	char maze[SIZEY][SIZEX];			// structure of the maze
+
 	vector<Item> pills;
+	vector<Item> holes;
+
 	Item spot = { 0, 0, SPOT }; 		// spot's position and symbol
 	string message("LET'S START...");	// current message to player
 
 	// Hole placement related variables - will need to change when we add difficulty levels
 	const int numberOfHoles(12);
-	Item holes[numberOfHoles];
+
 
 
 	// action...
