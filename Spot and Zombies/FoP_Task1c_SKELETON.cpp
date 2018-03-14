@@ -19,6 +19,7 @@
 #include <string>
 #include <sstream>
 #include <time.h> // For time display
+#include <vector>
 
 using namespace std;
 
@@ -38,11 +39,14 @@ const char SPOT('@');   		// spot
 const char TUNNEL(' ');			// tunnel
 const char WALL('#');    		// border
 const char HOLE('0');			// Character used to represent holes
+const char PILL('*');
 // defining the command letters to move the spot on the maze
-const int  UP(72);				// up arrow
-const int  DOWN(80); 			// down arrow
-const int  RIGHT(77);			// right arrow
-const int  LEFT(75);			// left arrow
+const int  UP(72);			// up arrow
+const int  DOWN(80); 		// down arrow
+const int  RIGHT(77);		// right arrow
+const int  LEFT(75);		// left arrow
+// defining numerical constants
+const int MAXPILLS(8);
 // defining the other command letters
 const char QUIT('Q');			// to end the game
 const char FREEZE('F');			// Cheat command 1, to freeze the zombies in place.
@@ -65,7 +69,7 @@ int main()
 {
 	// function declarations (prototypes)
 	void displayEntryScreen();
-	void initialiseGame(char g[][SIZEX], char m[][SIZEX], Item& spot, int numberOfHoles, Item holes[]);
+	void initialiseGame(char g[][SIZEX], char m[][SIZEX], Item& spot, int numberOfHoles, Item holes[], vector<Item> &pills);
 	void paintGame(const char g[][SIZEX], string mess);
 	bool wantsToQuit(const int key);
 	bool isArrowKey(const int k);
@@ -73,11 +77,13 @@ int main()
 	void updateGameData(const char g[][SIZEX], Item& spot, const int key, string& mess);
 	void updateGrid(char g[][SIZEX], const char m[][SIZEX], const Item spot, int maxHoles, Item holes[]);
 	void endProgram();
+	void getTime(struct tm &timeLocal);
 
 
 	// local variable declarations 
 	char grid[SIZEY][SIZEX];			// grid for display
 	char maze[SIZEY][SIZEX];			// structure of the maze
+	vector<Item> pills;
 	Item spot = { 0, 0, SPOT }; 		// spot's position and symbol
 	string message("LET'S START...");	// current message to player
 
@@ -91,7 +97,7 @@ int main()
 	SetConsoleTitle("Spot and Zombies Game - FoP 2017-18");
 	displayEntryScreen();
 	cin.get(); // HACK temporarily hold display here to view entry screen.
-	initialiseGame(grid, maze, spot, numberOfHoles, holes);	// initialise grid (incl. walls and spot)
+	initialiseGame(grid, maze, spot, numberOfHoles, holes, pills);	// initialise grid (incl. walls and spot)
 	paintGame(grid, message);			// display game info, modified grid and messages
 	int key;							// current key selected by player
 	do
@@ -131,17 +137,19 @@ int main()
 // ----- initialise game state
 // ---------------------------------------------------------------------------
 
-void initialiseGame(char grid[][SIZEX], char maze[][SIZEX], Item& spot, int numberOfHoles, Item holes[])
+void initialiseGame(char grid[][SIZEX], char maze[][SIZEX], Item& spot, int numberOfHoles, Item holes[], vector<Item> &pills)
 {
 	// initialise grid and place spot in middle
 	void setInitialMazeStructure(char maze[][SIZEX]);
 	void setSpotInitialCoordinates(Item& spot, char[][SIZEX]);
 	void updateGrid(char g[][SIZEX], const char m[][SIZEX], Item b, int maxHoles, Item holes[]);
 	void setHoleInitialPosition(char maze[][SIZEX], int maxHoles, Item holes[]);
+	void createPills(char[][SIZEX], vector<Item> &pills);
 
 	setInitialMazeStructure(maze);		// initialise maze
 	setHoleInitialPosition(maze, numberOfHoles, holes);
 	setSpotInitialCoordinates(spot, maze);
+	createPills(maze, pills);
 	updateGrid(grid, maze, spot, numberOfHoles, holes);		// prepare grid
 }
 
@@ -223,6 +231,21 @@ bool isPositionUnique(int i, const Item& item, Item array[])
 		--i;
 	}
 	return !inArray;
+}
+
+void createPills(char maze[][SIZEX], vector<Item> &pills)
+{
+	void placeItem(char[][SIZEX], Item);
+	for (int pillCount = 0; pillCount < MAXPILLS; pillCount++)
+	{
+		Item pill;
+		do
+		{
+			pill = { Random(SIZEX), Random(SIZEY), PILL };
+		} while (maze[pill.x][pill.y] != TUNNEL);
+		pills.push_back(pill);
+		placeItem(maze, pill);
+	}
 }
 
 
@@ -442,8 +465,8 @@ void paintGame(const char g[][SIZEX], string mess)
 	showMessage(clYellow, clBlue, 40, 2, "FoP Task 1c: February 2018");
 
 	// display menu options available
-	showMessage(clRed, clGreen, 40, 3, "TO MOVE USE KEYBOARD ARROWS ");
-	showMessage(clRed, clGreen, 40, 4, "TO QUIT ENTER 'Q'           ");
+	showMessage(clRed, clGreen, 40, 8, "TO MOVE USE KEYBOARD ARROWS ");
+	showMessage(clRed, clGreen, 40, 9, "TO QUIT ENTER 'Q'           ");
 
 	// print auxiliary messages if any
 	showMessage(clBlack, clYellow, 40, 8, mess);	// display current message
