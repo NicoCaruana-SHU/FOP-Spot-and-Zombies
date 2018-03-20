@@ -19,6 +19,7 @@
 #include <sstream>
 #include <time.h> // For time display
 #include <vector>
+#include <fstream> // For saving/loading files
 
 using namespace std;
 
@@ -61,6 +62,12 @@ struct Item
 //	int lives;
 //};
 
+struct PlayerInfo {
+	string playerName;
+	int score = -1;
+	bool hasCheated = false;
+};
+
 struct GameSpaceManager
 {
 	char grid[SIZEY][SIZEX];			// grid for display
@@ -83,21 +90,21 @@ struct GameObjectManager
 int main()
 {
 	// function declarations (prototypes)
-	void displayEntryScreen();
+	void displayEntryScreen(PlayerInfo& playerData);
 	void initialiseGame(GameSpaceManager& gsm, const int numberOfHoles, const int MAXPILLS, GameObjectManager& gom);
-	void paintGame(const GameSpaceManager& gsm, const string& mess);
+	void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const string& mess);
 	bool wantsToQuit(const int key);
 	bool isArrowKey(const int k);
 	int  getKeyPress();
 	void updateGameData(const char g[][SIZEX], Item& spot, const int key, string& mess);
 	void updateGrid(GameSpaceManager& gsm, const GameObjectManager& gom);
 	void endProgram();
-	void getTime(struct tm &timeLocal);
 
 	// local variable declarations
 
 	GameSpaceManager gsm;
 	GameObjectManager gom;
+	PlayerInfo playerData;
 
 	string message("LET'S START...");	// current message to player
 
@@ -106,14 +113,13 @@ int main()
 	const int MAXPILLS(8);
 
 	// action...
-	Seed();								// seed the random number generator
+	Seed();												// seed the random number generator
 	SetConsoleTitle("Spot and Zombies Game - FoP 2017-18");
-	displayEntryScreen();
-	cin.get(); // HACK temporarily hold display here to view entry screen.
-	Clrscr();							// Using included libraries, clears the game screen - sets it all grey.
+	displayEntryScreen(playerData);
+	Clrscr();											// Using included libraries, clears the game screen - sets it all grey.
 	initialiseGame(gsm, numberOfHoles, MAXPILLS, gom);	// initialise grid (incl. walls and spot)
-	paintGame(gsm, message);			// display game info, modified grid and messages
-	int key;							// current key selected by player
+	paintGame(gsm, playerData, message);				// display game info, modified grid and messages
+	int key;											// current key selected by player
 	do
 	{
 		key = toupper(getKeyPress()); 	// read in  selected key: arrow or letter command
@@ -137,12 +143,12 @@ int main()
 				break; //Maybe do something here.. put it in for now to simply get rid of the invalid key message before terminating loop on quit command.
 
 			default:
-				message = "INVALID KEY!";	// set 'Invalid key' message
+				message = "INVALID KEY!";			// set 'Invalid key' message
 			}
 		}
-		paintGame(gsm, message);		// display game info, modified grid and messages
-	} while (!wantsToQuit(key));		// while user does not want to quit
-	endProgram();						// display final message
+		paintGame(gsm, playerData, message);		// display game info, modified grid and messages
+	} while (!wantsToQuit(key));					// while user does not want to quit
+	endProgram();									// display final message
 	return 0;
 }
 
@@ -159,11 +165,12 @@ void initialiseGame(GameSpaceManager& gsm, const int numberOfHoles, const int MA
 	void updateGrid(GameSpaceManager& gsm, const GameObjectManager& gom);
 	void setMultipleItems(const char itemSymbol, int maxNumOfItems, vector<Item>& itemStore, char maze[][SIZEX]);
 
-	setInitialMazeStructure(gsm.maze);			// initialise maze
-	setMultipleItems(HOLE, numberOfHoles, gom.holes, gsm.maze);
-	setMultipleItems(PILL, MAXPILLS, gom.pills, gsm.maze);
-	setItemInitialCoordinates(gom.spot, SPOT, gsm.maze);
-	updateGrid(gsm, gom);						// prepare grid
+	setInitialMazeStructure(gsm.maze);								// initialise maze
+																	//TODO Place zombies first so that nothing spawns over the corners.
+	setMultipleItems(HOLE, numberOfHoles, gom.holes, gsm.maze);		//Place the holes second
+	setMultipleItems(PILL, MAXPILLS, gom.pills, gsm.maze);			// Place the pills
+	setItemInitialCoordinates(gom.spot, SPOT, gsm.maze);			// Finally place Spot
+	updateGrid(gsm, gom);											// prepare grid
 }
 
 void setItemInitialCoordinates(Item& item, const char itemSymbol, char maze[][SIZEX])
@@ -229,10 +236,10 @@ void updateGrid(GameSpaceManager& gsm, const GameObjectManager& gom)
 	void placeMultipleItems(char g[][SIZEX], const vector<Item>& itemStore);
 
 	// Not sent as complete GSM/GOM, to keep constant array restrictions.
-	setMaze(gsm.grid, gsm.maze);	// reset the empty maze configuration into grid 
-	placeMultipleItems(gsm.grid, gom.holes);
-	placeMultipleItems(gsm.grid, gom.pills);
-	placeItem(gsm.grid, gom.spot);	// set spot in grid
+	setMaze(gsm.grid, gsm.maze);					// reset the empty maze configuration into grid 
+	placeMultipleItems(gsm.grid, gom.holes);		// Place holes on the grid
+	placeMultipleItems(gsm.grid, gom.pills);		// Place pills onto the grid
+	placeItem(gsm.grid, gom.spot);					// set spot in grid
 }
 
 void setMaze(char grid[][SIZEX], const char maze[][SIZEX])
@@ -249,12 +256,11 @@ void placeItem(char g[][SIZEX], const Item& item)
 	g[item.y][item.x] = item.symbol;
 }
 
-// Item placement function
+// Multiple item placement function
 // IN: Array representing the maze, Vector holding the items.
 // OUT:
 // Precondition: None
 // Postcondition: All items will be placed on grid
-
 void placeMultipleItems(char g[][SIZEX], const vector<Item>& itemStore) {
 	void placeItem(char g[][SIZEX], const Item& item);
 
@@ -376,58 +382,114 @@ void showMessage(const WORD backColour, const WORD textColour, int x, int y, con
 	cout << message;
 }
 
-// TODO Nico
-void showGameTitle(int x, int y) {
+// Display the games title on sequential lines from a set starting point in defined colours.
+void showGameTitle(const WORD backColour, const WORD textColour, int x, int y) {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
-	showMessage(clDarkGrey, clYellow, x, y, "--------------------");
-	showMessage(clDarkGrey, clYellow, x, y + 1, "| SPOT AND ZOMBIES |");
-	showMessage(clDarkGrey, clYellow, x, y + 2, "--------------------");
+	showMessage(backColour, textColour, x, y, "--------------------");
+	showMessage(backColour, textColour, x, y + 1, "| SPOT AND ZOMBIES |");
+	showMessage(backColour, textColour, x, y + 2, "--------------------");
 }
 
-// TODO Nico
-void showGroupMembers(int x, int y) {
+// Display the project members on sequential lines from a set starting point in defined colours.
+void showGroupMembers(const WORD backColour, const WORD textColour, int x, int y) {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
-	showMessage(clDarkGrey, clYellow, x, y, "GROUP CS4G1A  -  2017-18");
-	showMessage(clDarkGrey, clYellow, x, y + 1, "Charlie Batten  ");
-	showMessage(clDarkGrey, clYellow, x, y + 2, "Matt Bellamy    ");
-	showMessage(clDarkGrey, clYellow, x, y + 3, "Nico Caruana    27022205");
+	showMessage(backColour, textColour, x, y, "GROUP CS4G1A  -  2017-18");
+	showMessage(backColour, textColour, x, y + 1, "Charlie Batten  ");
+	showMessage(backColour, textColour, x, y + 2, "Matt Bellamy    ");
+	showMessage(backColour, textColour, x, y + 3, "Nico Caruana    27022205");
+}
+
+// Display a request for the user to enter username from a set starting point in a defined colour.
+// User Entry text is then changed to a red colour.
+void displayNameRequest(const WORD backColour, const WORD textColour, int x, int y) {
+	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
+	showMessage(backColour, textColour, x, y, "Enter your name: ");
+	SelectTextColour(clRed);
+}
+
+//TODO Nico - Basic function to get username, need to add validity checks and length limits.
+string getUserName() {
+	string playerName;
+	cin >> playerName;
+	return playerName;
+}
+
+void checkAndLoadUserSavedData(const string& userName, PlayerInfo& playerData) {
+	ifstream fin(userName + ".txt");		// Attempt to open the user's previous save file.
+	if (fin.fail()) {						// If the file is not present, assume new user.
+		playerData.playerName = userName;	// Set the username entered to be the players name for this session.
+	}
+	else {									// Otherwise extract the player name and high score from the save file.
+		string tempUserName;
+		int tempScore;
+		fin >> tempUserName;
+		fin >> tempScore;
+		playerData.playerName = tempUserName;
+		playerData.score = tempScore;
+	}
+}
+//TODO Nico
+void saveUserData(const PlayerInfo& playerData) {
+	ofstream fout;
+	fout.open(playerData.playerName + ".txt");
+	if (fout.fail()) {
+		//TODO Throw an error
+	}
+	else {
+		fout << playerData.playerName << " " << playerData.score;
+	}
+}
+//TODO Nico
+void displayPlayerInformation(const struct PlayerInfo& playerData) {
+	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
+
+	showMessage(clDarkGrey, clYellow, 40, 20, "Player Name: " + playerData.playerName);
+	showMessage(clDarkGrey, clYellow, 40, 21, "High Score: " + tostring(playerData.score));
 }
 
 // TODO Nico
 // Entry screen display
-void displayEntryScreen() {
-	void showGameTitle(int x, int y);
-	void showGroupMembers(int x, int y);
+void displayEntryScreen(struct PlayerInfo& playerData) {
+	void showGameTitle(const WORD backColour, const WORD textColour, int x, int y);
+	void showGroupMembers(const WORD backColour, const WORD textColour, int x, int y);
+	void displayTimeAndDate(const WORD firstColour, const WORD secondColour, const int x, const int y);
+	void displayNameRequest(const WORD backColour, const WORD textColour, int x, int y);
+	void checkAndLoadUserSavedData(const string& userName, struct PlayerInfo& playerData);
+	string getUserName();
+	void saveUserData(const PlayerInfo& playerData);
 
-	showGameTitle(10, 6);
-	showGroupMembers(10, 10);
-
+	showGameTitle(clDarkGrey, clYellow, 10, 6);
+	showGroupMembers(clDarkGrey, clYellow, 10, 10);
+	displayTimeAndDate(clDarkGrey, clYellow, 40, 1);
+	displayNameRequest(clDarkGrey, clYellow, 10, 20);
+	checkAndLoadUserSavedData(getUserName(), playerData);
+	saveUserData(playerData); //HACK Just for testing save function.
 }
 
-void paintGame(const GameSpaceManager& gsm, const string& mess)
+void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const string& mess)
 {
-	void displayTimeAndDate(const WORD firstColour, const WORD secondColour, const int x, const int y);
+	void displayPlayerInformation(const PlayerInfo& playerData);
 
 	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 	// display game title, messages, maze, spot and other items on screen
 	string tostring(char x);
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 	void paintGrid(const GameSpaceManager& gsm);
+	void displayTimeAndDate(const WORD firstColour, const WORD secondColour, const int x, const int y);
 	// display game title
-	showMessage(clDarkGreen, clGreen, 0, 0, "___GAME___");
+	showMessage(clDarkGreen, clGreen, 0, 0, "___SPOT AND ZOMBIES GAME___");
+	showMessage(clYellow, clBlue, 40, 0, "FoP Task 1c: February 2018");
+	displayTimeAndDate(clYellow, clBlue, 40, 1);
 
-	displayTimeAndDate(clYellow, clBlue, 40, 0);
-
-	showMessage(clYellow, clBlue, 40, 2, "FoP Task 1c: February 2018");
-
+	// print auxiliary messages if any
+	showMessage(clBlack, clYellow, 40, 6, mess);	// display current message
 	// display menu options available
 	showMessage(clRed, clGreen, 40, 8, "TO MOVE USE KEYBOARD ARROWS ");
 	showMessage(clRed, clGreen, 40, 9, "TO QUIT ENTER 'Q'           ");
 
-	// print auxiliary messages if any
-	showMessage(clBlack, clYellow, 40, 6, mess);	// display current message
+	displayPlayerInformation(playerData);
 
 	// display grid contents
 	paintGrid(gsm);
