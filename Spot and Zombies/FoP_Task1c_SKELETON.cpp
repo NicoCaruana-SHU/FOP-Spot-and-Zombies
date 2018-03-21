@@ -33,10 +33,10 @@ using namespace std;
 const int  SIZEX(25);    		// horizontal dimension
 const int  SIZEY(20);			// vertical dimension
 // defining symbols used for display of the grid and content
-const char SPOT('@');   		
-const char TUNNEL(' ');			
-const char WALL('#');    		
-const char HOLE('0');			
+const char SPOT('@');
+const char TUNNEL(' ');
+const char WALL('#');
+const char HOLE('0');
 const char PILL('*');
 const char ZOMBIE('Z');
 
@@ -76,7 +76,16 @@ struct GameSpaceManager
 struct GameObjectManager
 {
 	vector<Item> holes, pills, zombies;
-	Item spot;
+	Item spot;	
+};
+
+struct GameData {
+	int numberOfHoles = 12;
+	int maxPills = 8;
+	int maxNumberOfZombies = 4;
+	int numberOfPillsLeft = maxPills;
+	int zombiesLeft = maxNumberOfZombies;
+
 };
 
 // TODO Add a difficulty struct with max number of items - Advanced tasks!
@@ -90,8 +99,8 @@ int main()
 {
 	// function declarations (prototypes)
 	void displayEntryScreen(PlayerInfo& playerData);
-	void initialiseGame(GameSpaceManager& gsm, const int numberOfHoles, const int MAXPILLS, GameObjectManager& gom);
-	void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const string& mess);
+	void initialiseGame(GameSpaceManager& gsm, GameObjectManager& gom, GameData& gameData);
+	void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const GameData& gameData, const string& mess);
 	void spawnZombies(char grid[][SIZEX], vector<Item>& zombies);
 	void killZombies(vector<Item>& zombies);
 	bool allZombiesDead(vector<Item> zombies);
@@ -107,21 +116,17 @@ int main()
 	GameSpaceManager gsm;
 	GameObjectManager gom;
 	PlayerInfo playerData;
+	GameData gameData;
 
 	string message("LET'S START...");	// current message to player
-
-	// TODO difficulty level related variables - will need to change location when we add 
-	const int numberOfHoles(12);
-	const int MAXPILLS(8);
-	const int MAXNUMBEROFZOMBIES(4);
 
 	// action...
 	Seed();												// seed the random number generator
 	SetConsoleTitle("Spot and Zombies Game - FoP 2017-18");
 	displayEntryScreen(playerData);
 	Clrscr();											// Using included libraries, clears the game screen - sets it all grey.
-	initialiseGame(gsm, numberOfHoles, MAXPILLS, gom);	// initialise grid (incl. walls and spot)	
-	paintGame(gsm, playerData, message);				// display game info, modified grid and messages
+	initialiseGame(gsm, gom, gameData);	// initialise grid (incl. walls and spot)	
+	paintGame(gsm, playerData, gameData, message);				// display game info, modified grid and messages
 	int key;											// current key selected by player
 	do
 	{
@@ -155,7 +160,11 @@ int main()
 				break;
 			case EAT:
 				playerData.hasCheated = true;
-				//TODO STUB - Eat all pills. Permanently disappear from the board and numremainingpills set to 0;
+				for (int i = 0; i < gom.pills.size(); i++)
+				{
+					gom.pills.at(i).visible = false;					
+				}
+				gameData.numberOfPillsLeft = 0;
 				break;
 			case QUIT:
 				break; //Maybe do something here.. put it in for now to simply get rid of the invalid key message before terminating loop on quit command.
@@ -165,11 +174,9 @@ int main()
 			}
 			updateGrid(gsm, gom); //Re-Update grid to apply changes
 		}
-		paintGame(gsm, playerData, message);		// display game info, modified grid and messages
+		paintGame(gsm, playerData, gameData, message);		// display game info, modified grid and messages
 	} while (!wantsToQuit(key));					// while user does not want to quit
-	if (!playerData.hasCheated) { // TODO Should probably pull this out of here and make a generic game over function that can be used after death/win too.
-	saveUserData(playerData);
-	}
+	// TODO GameOver
 	endProgram();									// display final message
 	return 0;
 }
@@ -179,7 +186,7 @@ int main()
 // ----- initialise game state
 // ---------------------------------------------------------------------------
 
-void initialiseGame(GameSpaceManager& gsm, const int numberOfHoles, const int MAXPILLS, GameObjectManager& gom)
+void initialiseGame(GameSpaceManager& gsm, GameObjectManager& gom, GameData& gameData)
 {
 	// initialise grid and place spot in middle
 	void setInitialMazeStructure(char maze[][SIZEX]);
@@ -192,8 +199,8 @@ void initialiseGame(GameSpaceManager& gsm, const int numberOfHoles, const int MA
 	setInitialMazeStructure(gsm.maze);								// initialise maze
 	setMaze(gsm.grid, gsm.maze);									// Create first empty game frame
 	spawnZombies(gsm.grid, gom.zombies);							// Place zombies first so that nothing spawns over the corners.
-	setMultipleItems(HOLE, numberOfHoles, gom.holes, gsm.grid);		// Place the holes second
-	setMultipleItems(PILL, MAXPILLS, gom.pills, gsm.grid);			// Place the pills
+	setMultipleItems(HOLE, gameData.numberOfHoles, gom.holes, gsm.grid);		// Place the holes second
+	setMultipleItems(PILL, gameData.maxPills, gom.pills, gsm.grid);			// Place the pills
 	setItemInitialCoordinates(gom.spot, SPOT, gsm.grid);			// Finally place Spot
 }
 
@@ -571,12 +578,12 @@ void saveUserData(const PlayerInfo& playerData) {
 	}
 }
 //TODO Nico
-void displayPlayerInformation(const struct PlayerInfo& playerData) {
+void displayPlayerInformation(const PlayerInfo& playerData, int x, int y) {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
-	showMessage(clDarkGrey, clYellow, 40, 19, "Player Name: " + playerData.playerName);
-	showMessage(clDarkGrey, clYellow, 40, 20, "Score:      " + tostring(playerData.score));
-	showMessage(clDarkGrey, clYellow, 40, 21, "High Score: " + tostring(playerData.highscore));
+	showMessage(clDarkGrey, clYellow, x, y, "Player Name: " + playerData.playerName);
+	showMessage(clDarkGrey, clYellow, x, y+1, "Lives:      " + tostring(playerData.score));
+	showMessage(clDarkGrey, clYellow, x, y+2, "High Score: " + tostring(playerData.highscore));
 }
 
 // TODO Nico
@@ -598,9 +605,17 @@ void displayEntryScreen(struct PlayerInfo& playerData) {
 	saveUserData(playerData); //HACK Just for testing save function.
 }
 
-void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const string& mess)
+void displayGameInformation(const GameData& gameData, int x, int y) {
+	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
+
+	showMessage(clDarkGrey, clYellow, x, y, "NUMBER OF PILLS REMAINING: " + tostring(gameData.numberOfPillsLeft));
+
+}
+
+void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const GameData& gameData, const string& mess)
 {
-	void displayPlayerInformation(const PlayerInfo& playerData);
+	void displayPlayerInformation(const PlayerInfo& playerData, int x, int y);
+	void displayGameInformation(const GameData& gameData, int x, int y);
 
 	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 	// display game title, messages, maze, spot and other items on screen
@@ -619,7 +634,8 @@ void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const 
 	showMessage(clRed, clGreen, 40, 8, "TO MOVE USE KEYBOARD ARROWS ");
 	showMessage(clRed, clGreen, 40, 9, "TO QUIT ENTER 'Q'           ");
 
-	displayPlayerInformation(playerData);
+	displayPlayerInformation(playerData, 40, 19);
+	displayGameInformation(gameData, 40, 25);
 
 	// display grid contents
 	paintGrid(gsm);
@@ -665,6 +681,14 @@ void endProgram()
 	showMessage(clRed, clYellow, 40, 8, "");
 	system("pause");	// hold output screen until a keyboard key is hit
 }
+
+void gameOver(const PlayerInfo& playerData) {
+	void saveUserData(const PlayerInfo& playerData);
+	if (!playerData.hasCheated) { // TODO Should probably pull this out of here and make a generic game over function that can be used after death/win too.
+		saveUserData(playerData);
+	}
+}
+
 
 // IN: background colour, text colour, x-position, y-position
 // OUT:
