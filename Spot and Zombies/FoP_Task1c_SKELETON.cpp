@@ -1,4 +1,3 @@
-// TODO My tasks, code the holes and the cheats.!!!
 // ---------------------------------------------------------------------------
 // Program: Skeleton for Task 1c – group assignment
 // Author: Pascale Vacher
@@ -41,10 +40,10 @@ const char WALL('#');    		// border
 const char HOLE('0');			// Character used to represent holes
 const char PILL('*');
 // defining the command letters to move the spot on the maze
-const int  UP(72);			// up arrow
-const int  DOWN(80); 		// down arrow
-const int  RIGHT(77);		// right arrow
-const int  LEFT(75);		// left arrow
+const int  UP(72);				// up arrow
+const int  DOWN(80); 			// down arrow
+const int  RIGHT(77);			// right arrow
+const int  LEFT(75);			// left arrow
 
 // defining the other command letters
 const char QUIT('Q');			// to end the game
@@ -56,6 +55,7 @@ struct Item
 {
 	int x, y;
 	char symbol;
+	bool visible = true;
 };
 
 //struct Spot : Item {
@@ -96,7 +96,7 @@ int main()
 	bool wantsToQuit(const int key);
 	bool isArrowKey(const int k);
 	int  getKeyPress();
-	void updateGameData(const char g[][SIZEX], Item& spot, const int key, string& mess);
+	void updateGameData(const char g[][SIZEX], GameObjectManager& gom, const int key, string& mess);
 	void updateGrid(GameSpaceManager& gsm, const GameObjectManager& gom);
 	void endProgram();
 
@@ -125,7 +125,7 @@ int main()
 		key = toupper(getKeyPress()); 	// read in  selected key: arrow or letter command
 		if (isArrowKey(key))
 		{
-			updateGameData(gsm.grid, gom.spot, key, message);		// move spot in that direction
+			updateGameData(gsm.grid, gom, key, message);			// move spot in that direction
 			updateGrid(gsm, gom);									// update grid information
 		}
 		else {
@@ -274,11 +274,12 @@ void placeMultipleItems(char g[][SIZEX], const vector<Item>& itemStore) {
 // ---------------------------------------------------------------------------
 // ----- move items on the grid
 // ---------------------------------------------------------------------------
-void updateGameData(const char g[][SIZEX], Item& spot, const int key, string& mess)
+void updateGameData(char g[][SIZEX], GameObjectManager& gom, const int key, string& mess)
 {
 	// move spot in required direction
 	bool isArrowKey(const int k);
 	void setKeyDirection(int k, int& dx, int& dy);
+	void eatPill(int, int, GameObjectManager& gom);
 	assert(isArrowKey(key));
 
 	// reset message to blank
@@ -289,16 +290,31 @@ void updateGameData(const char g[][SIZEX], Item& spot, const int key, string& me
 	setKeyDirection(key, dx, dy);
 
 	// check new target position in grid and update game data (incl. spot coordinates) if move is possible
-	switch (g[spot.y + dy][spot.x + dx])
+	switch (g[gom.spot.y + dy][gom.spot.x + dx])
 	{
 		// ...depending on what's on the target position in grid...
 	case TUNNEL:		// can move
-		spot.y += dy;	// go in that Y direction
-		spot.x += dx;	// go in that X direction
+		gom.spot.y += dy;	// go in that Y direction
+		gom.spot.x += dx;	// go in that X direction
 		break;
 	case WALL:  		// hit a wall and stay there
 		mess = "CANNOT GO THERE!";
 		break;
+	case PILL:
+		gom.spot.x += dx;
+		gom.spot.y += dy;
+		eatPill(gom.spot.x, gom.spot.y, gom);
+	}
+}
+
+void eatPill(int pillX, int pillY, GameObjectManager& gom)
+{
+	for each (Item pill in gom.pills)
+	{
+		if (pill.x == pillX && pill.y == pillY)
+		{
+			pill.visible = false;
+		}
 	}
 }
 // ---------------------------------------------------------------------------
