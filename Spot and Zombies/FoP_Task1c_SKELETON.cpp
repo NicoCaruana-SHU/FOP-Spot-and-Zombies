@@ -67,6 +67,7 @@ struct Item
 struct PlayerInfo {
 	string playerName;
 	int score = 0;
+	int highscore = 0;
 	bool hasCheated = false;
 };
 
@@ -446,7 +447,7 @@ void checkAndLoadUserSavedData(const string& userName, PlayerInfo& playerData) {
 		fin >> tempUserName;
 		fin >> tempScore;
 		playerData.playerName = tempUserName;
-		playerData.score = tempScore;
+		playerData.highscore = tempScore;
 	}
 }
 //TODO Nico
@@ -457,15 +458,16 @@ void saveUserData(const PlayerInfo& playerData) {
 		//TODO Throw an error
 	}
 	else {
-		fout << playerData.playerName << " " << playerData.score;
+		fout << playerData.playerName << " " << ((playerData.score > playerData.highscore) ? playerData.score : playerData.highscore);
 	}
 }
 //TODO Nico
 void displayPlayerInformation(const struct PlayerInfo& playerData) {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
-	showMessage(clDarkGrey, clYellow, 40, 20, "Player Name: " + playerData.playerName);
-	showMessage(clDarkGrey, clYellow, 40, 21, "High Score: " + tostring(playerData.score));
+	showMessage(clDarkGrey, clYellow, 40, 19, "Player Name: " + playerData.playerName);
+	showMessage(clDarkGrey, clYellow, 40, 20, "Score:      " + tostring(playerData.score));
+	showMessage(clDarkGrey, clYellow, 40, 21, "High Score: " + tostring(playerData.highscore));
 }
 
 // TODO Nico
