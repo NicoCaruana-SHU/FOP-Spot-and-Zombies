@@ -58,6 +58,7 @@ struct Item
 	int x, y;
 	char symbol;
 	bool visible = true;
+	bool alive = true;
 };
 
 //struct Spot : Item {
@@ -78,19 +79,12 @@ struct GameSpaceManager
 
 struct GameObjectManager
 {
-	vector<Item> holes, pills;
+	vector<Item> holes, pills, zombies;
 	Item spot;
 };
 
 // TODO Add a difficulty struct with max number of items - Advanced tasks!
 
-
-struct Zombie
-{
-	int x, y;
-	char symbol;
-	bool alive;
-};
 
 // ---------------------------------------------------------------------------
 // ----- run game
@@ -102,14 +96,14 @@ int main()
 	void displayEntryScreen(PlayerInfo& playerData);
 	void initialiseGame(GameSpaceManager& gsm, const int numberOfHoles, const int MAXPILLS, GameObjectManager& gom);
 	void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const string& mess);
-	void spawnZombies(char maze[][SIZEX], vector<Zombie> &zombies);
-	void killZombies(vector<Zombie> &zombies);
-	bool allZombiesDead(vector<Zombie> zombies);
+	
+	void killZombies(vector<Item>& zombies);
+	bool allZombiesDead(vector<Item> zombies);
 	bool wantsToQuit(const int key);
 	bool isArrowKey(const int k);
 	int  getKeyPress();
 	void updateGameData(const char g[][SIZEX], GameObjectManager& gom, const int key, string& mess);
-	void updateGrid(GameSpaceManager& gsm, const GameObjectManager& gom);
+	void updateGrid(GameSpaceManager& gsm, GameObjectManager& gom);
 	void endProgram();
 
 	// local variable declarations
@@ -123,17 +117,17 @@ int main()
 	// TODO difficulty level related variables - will need to change location when we add 
 	const int numberOfHoles(12);
 	const int MAXPILLS(8);
+	const int MAXNUMBEROFZOMBIES(4);
 
 	// Declaration of Zombies - initial placement is done in 'spawnZombies' function
-	vector<Zombie> zombies = { { 0, 0, ZOMBIE, true },{ 0, 0, ZOMBIE, true },{ 0, 0, ZOMBIE, true },{ 0, 0, ZOMBIE, true } };
+	// HACK Not needed vector<Item> zombies = { { 0, 0, ZOMBIE, true },{ 0, 0, ZOMBIE, true },{ 0, 0, ZOMBIE, true },{ 0, 0, ZOMBIE, true } };
 
 	// action...
 	Seed();												// seed the random number generator
 	SetConsoleTitle("Spot and Zombies Game - FoP 2017-18");
 	displayEntryScreen(playerData);
 	Clrscr();											// Using included libraries, clears the game screen - sets it all grey.
-	initialiseGame(gsm, numberOfHoles, MAXPILLS, gom);	// initialise grid (incl. walls and spot)
-	spawnZombies(grid, zombies);		// Initial spawning of zombies
+	initialiseGame(gsm, numberOfHoles, MAXPILLS, gom);	// initialise grid (incl. walls and spot)	
 	paintGame(gsm, playerData, message);				// display game info, modified grid and messages
 	int key;											// current key selected by player
 	do
@@ -142,7 +136,7 @@ int main()
 		if (isArrowKey(key))
 		{
 			updateGameData(gsm.grid, gom, key, message);			// move spot in that direction
-			updateGrid(gsm, gom, zombies);									// update grid information
+			updateGrid(gsm, gom);									// update grid information
 		}
 		else {
 			switch (key) {
@@ -151,15 +145,15 @@ int main()
 				break;
 			case EXTERMINATE:
 				//Exterminate all zombies on screen
-				if (allZombiesDead(zombies))
+				if (allZombiesDead(gom.zombies))
 				{
-					spawnZombies(grid, zombies);
+					//HACK disabled temporarily spawnZombies(gsm.grid, gom.zombies);
 				}
 				//If all zombies are already dead, resets them to default spawn locations and respawns them
 				else
 				{
-					killZombies(zombies);
-					updateGrid(grid, maze, spot, numberOfHoles, holes, zombies); //Re-Update grid to apply dead zombies
+					killZombies(gom.zombies);
+					updateGrid(gsm, gom); //Re-Update grid to apply dead zombies
 				}
 				break;
 			case EAT:
@@ -172,7 +166,7 @@ int main()
 				message = "INVALID KEY!";	// set 'Invalid key' message
 			}
 		}
-		paintGame(grid, message);		// display game info, modified grid and messages
+		paintGame(gsm, playerData, message);		// display game info, modified grid and messages
 	} while (!wantsToQuit(key));		// while user does not want to quit
 	endProgram();						// display final message
 	return 0;
@@ -183,20 +177,21 @@ int main()
 // ----- initialise game state
 // ---------------------------------------------------------------------------
 
-void initialiseGame(GameSpaceManager& gsm, const int numberOfHoles, const int MAXPILLS, GameObjectManager& gom, vector<Zombie> &zombies)
+void initialiseGame(GameSpaceManager& gsm, const int numberOfHoles, const int MAXPILLS, GameObjectManager& gom)
 {
 	// initialise grid and place spot in middle
 	void setInitialMazeStructure(char maze[][SIZEX]);
 	void setItemInitialCoordinates(Item& item, const char itemSymbol, char[][SIZEX]);
-	void updateGrid(GameSpaceManager& gsm, const GameObjectManager& gom, vector<Zombie> zombies);
+	void updateGrid(GameSpaceManager& gsm, GameObjectManager& gom);
 	void setMultipleItems(const char itemSymbol, int maxNumOfItems, vector<Item>& itemStore, char maze[][SIZEX]);
+	void spawnZombies(char maze[][SIZEX], vector<Item>& zombies);
 
 	setInitialMazeStructure(gsm.maze);								// initialise maze
-																	//TODO Place zombies first so that nothing spawns over the corners.
+	spawnZombies(gsm.grid, gom.zombies);							//TODO Place zombies first so that nothing spawns over the corners.
 	setMultipleItems(HOLE, numberOfHoles, gom.holes, gsm.maze);		//Place the holes second
 	setMultipleItems(PILL, MAXPILLS, gom.pills, gsm.maze);			// Place the pills
 	setItemInitialCoordinates(gom.spot, SPOT, gsm.maze);			// Finally place Spot
-	updateGrid(gsm, gom, zombies);											// prepare grid
+	updateGrid(gsm, gom);											// prepare grid
 }
 
 void setItemInitialCoordinates(Item& item, const char itemSymbol, char maze[][SIZEX])
@@ -238,14 +233,24 @@ void setInitialMazeStructure(char maze[][SIZEX])
 			maze[row][col] = (col == 0 || col == SIZEX - 1 || row == 0 || row == SIZEY - 1) ? WALL : TUNNEL;
 }
 
+void setMultipleItems(const char itemSymbol, int maxNumOfItems, vector<Item>& itemStore, char maze[][SIZEX])
+{
+	void placeItem(char g[][SIZEX], const Item& item);
 
+	for (int i = maxNumOfItems; i > 0; --i) {
+		Item i1;
+		setItemInitialCoordinates(i1, itemSymbol, maze);
+		itemStore.push_back(i1);
+		placeItem(maze, i1);
+	}
+}
 
 // Zombies alive checking function
 // IN: Vector representing all zombies
 // OUT: Boolean dictating if all zombies are alive. False even if even a single zombie is still alive
 // Precondition: None
 // Postcondition: Identified whether all zombies are dead
-bool allZombiesDead(vector<Zombie> zombies)
+bool allZombiesDead(vector<Item> zombies)
 {
 	bool returnVal = true;
 	int i = 0;
@@ -262,7 +267,7 @@ bool allZombiesDead(vector<Zombie> zombies)
 // OUT: New form of zombies vector with false .alive values
 // Precondition: None
 // Postcondition: All zombies referenced in function call are killed
-void killZombies(vector<Zombie> &zombies)
+void killZombies(vector<Item>& zombies)
 {
 	for (int i = 0; i < 4; i++)
 	{
@@ -275,57 +280,62 @@ void killZombies(vector<Zombie> &zombies)
 // OUT: Zombie coordinates reset to defaults, zombies set to be alive
 // Precondition: None
 // Postcondition: All zombies placed in their corners and alive
-void spawnZombies(char maze[][SIZEX], vector<Zombie> &zombies)
+void spawnZombies(char maze[][SIZEX], vector<Item>& zombieStore)
 {
-	void placeZombies(char[][SIZEX], vector<Zombie>);
+	void placeItem(char g[][SIZEX], const Item& item);
+	//Hack Temporarily disabled void placeZombies(char[][SIZEX], vector<Item> zombies);
 	//Position defaults
 	int xDef[4] = { 1, 1, 23, 23 };
 	int yDef[4] = { 1, 18, 18, 1 };
 
 	for (int i = 0; i < 4; i++)
 	{
-		zombies.at(i).x = xDef[i];
-		zombies.at(i).y = yDef[i];
-		zombies.at(i).alive = true;
-	}
-	placeZombies(maze, zombies);
-}
-
-// Zombies placement function
-// IN: Array representing the maze, Vector representing all zombies
-// OUT: Relevant zombies placed on relevant coordinates on the grid
-// Precondition: None
-// Postcondition: All zombies that are alive are placed on the grid at coordinates to match their own coordinate values
-void placeZombies(char maze[][SIZEX], vector<Zombie> zombies)
-{
-	void placeItem(char[][SIZEX], Item);
-
-	for (int i = 0; i < 4; i++)
-	{
-		if (zombies.at(i).alive)
-		{
-			Item zombie = { zombies.at(i).x, zombies.at(i).y, zombies.at(i).symbol };
-			placeItem(maze, zombie);
-		}
+		Item z1;
+		z1.x = xDef[i];
+		z1.y = yDef[i];
+		z1.alive = true;
+		z1.symbol = ZOMBIE;
+		z1.visible = 1;
+		zombieStore.push_back(z1);
+		placeItem(maze, z1);
 	}
 }
+
+//// Zombies placement function
+//// IN: Array representing the maze, Vector representing all zombies
+//// OUT: Relevant zombies placed on relevant coordinates on the grid
+//// Precondition: None
+//// Postcondition: All zombies that are alive are placed on the grid at coordinates to match their own coordinate values
+//void placeZombies(char maze[][SIZEX], vector<Item> zombies)
+//{
+//	void placeItem(char[][SIZEX], Item);
+//
+//	for (int i = 0; i < 4; i++)
+//	{
+//		if (zombies.at(i).alive)
+//		{
+//			{ zombies.at(i).x, zombies.at(i).y, zombies.at(i).symbol };
+//			placeItem(maze, zombie);
+//		}
+//	}
+//}
 
 
 // ---------------------------------------------------------------------------
 // ----- update grid state
 // ---------------------------------------------------------------------------
 
-void updateGrid(GameSpaceManager& gsm, const GameObjectManager& gom, vector<Zombie> zombies)
+void updateGrid(GameSpaceManager& gsm, GameObjectManager& gom)
 {
 	// update grid configuration after each move
 	void setMaze(char g[][SIZEX], const char b[][SIZEX]);
 	void placeItem(char g[][SIZEX], const Item& spot);
 	void placeMultipleItems(char g[][SIZEX], const vector<Item>& itemStore);
-	void placeZombies(char g[][SIZEX], vector<Zombie> zombies);
+	void placeZombies(char g[][SIZEX], vector<Item> zombies);
 
 	// Not sent as complete GSM/GOM, to keep constant array restrictions.
 	setMaze(gsm.grid, gsm.maze);					// reset the empty maze configuration into grid 
-	placeZombies(grid, zombies);
+	placeZombies(gsm.grid, gom.zombies);
 	placeMultipleItems(gsm.grid, gom.holes);		// Place holes on the grid
 	placeMultipleItems(gsm.grid, gom.pills);		// Place pills onto the grid
 	placeItem(gsm.grid, gom.spot);					// set spot in grid
@@ -488,24 +498,6 @@ void showMessage(const WORD backColour, const WORD textColour, int x, int y, con
 }
 
 // TODO Nico
-void showGameTitle(int x, int y) {
-	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string message);
-
-	showMessage(clDarkGrey, clYellow, x, y, "--------------------");
-	showMessage(clDarkGrey, clYellow, x, y + 1, "| SPOT AND ZOMBIES |");
-	showMessage(clDarkGrey, clYellow, x, y + 2, "--------------------");
-}
-
-// TODO Nico
-void showGroupMembers(int x, int y) {
-	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string message);
-
-	showMessage(clDarkGrey, clYellow, x, y, "GROUP CS4G1A  -  2017-18");
-	showMessage(clDarkGrey, clYellow, x, y + 1, "Charlie Batten  ");
-	showMessage(clDarkGrey, clYellow, x, y + 2, "Matt Bellamy    26012012");
-	showMessage(clDarkGrey, clYellow, x, y + 3, "Nico Caruana    27022205");
-}
-
 // Display the games title on sequential lines from a set starting point in defined colours.
 void showGameTitle(const WORD backColour, const WORD textColour, int x, int y) {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
