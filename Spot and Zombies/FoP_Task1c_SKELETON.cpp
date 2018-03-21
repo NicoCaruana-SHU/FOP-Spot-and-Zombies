@@ -41,6 +41,7 @@ const char WALL('#');    		// border
 const char HOLE('0');			// Character used to represent holes
 const char PILL('*');
 const char ZOMBIE('Z');
+
 // defining the command letters to move the spot on the maze
 const int  UP(72);				// up arrow
 const int  DOWN(80); 			// down arrow
@@ -67,7 +68,8 @@ struct Item
 
 struct PlayerInfo {
 	string playerName;
-	int score = -1;
+	int score = 0;
+	int highscore = 0;
 	bool hasCheated = false;
 };
 
@@ -102,10 +104,10 @@ int main()
 	bool wantsToQuit(const int key);
 	bool isArrowKey(const int k);
 	int  getKeyPress();
-	void updateGameData(const char g[][SIZEX], GameObjectManager& gom, const int key, string& mess);
-	void updateGrid(GameSpaceManager& gsm, GameObjectManager& gom);
+	void updateGameData(const char g[][SIZEX], GameObjectManager& gom, PlayerInfo& playerData, const int key, string& mess);
+	void updateGrid(GameSpaceManager& gsm, const GameObjectManager& gom);
+	void saveUserData(const PlayerInfo& playerData);
 	void endProgram();
-
 	// local variable declarations
 
 	GameSpaceManager gsm;
@@ -135,7 +137,7 @@ int main()
 		key = toupper(getKeyPress()); 	// read in  selected key: arrow or letter command
 		if (isArrowKey(key))
 		{
-			updateGameData(gsm.grid, gom, key, message);			// move spot in that direction
+			updateGameData(gsm.grid, gom, playerData, key, message);			// move spot in that direction
 			updateGrid(gsm, gom);									// update grid information
 		}
 		else {
@@ -167,8 +169,9 @@ int main()
 			}
 		}
 		paintGame(gsm, playerData, message);		// display game info, modified grid and messages
-	} while (!wantsToQuit(key));		// while user does not want to quit
-	endProgram();						// display final message
+	} while (!wantsToQuit(key));					// while user does not want to quit
+	saveUserData(playerData);
+	endProgram();									// display final message
 	return 0;
 }
 
@@ -351,7 +354,7 @@ void setMaze(char grid[][SIZEX], const char maze[][SIZEX])
 void placeItem(char g[][SIZEX], const Item& item)
 {
 	// place item at its new position in grid
-	g[item.y][item.x] = item.symbol;
+	g[item.y][item.x] = (item.visible) ? item.symbol : ' ';
 }
 
 // Multiple item placement function
@@ -364,20 +367,19 @@ void placeMultipleItems(char g[][SIZEX], const vector<Item>& itemStore) {
 
 	for (int i(itemStore.size() - 1); i >= 0; --i) { // place items until max is reached
 		// TODO Item renderer.. probably a good place for a visible check here.
-
-		placeItem(g, itemStore[i]);
+		placeItem(g, itemStore.at(i));
 	}
 }
 
 // ---------------------------------------------------------------------------
 // ----- move items on the grid
 // ---------------------------------------------------------------------------
-void updateGameData(const char g[][SIZEX], GameObjectManager& gom, const int key, string& mess)
+void updateGameData(const char g[][SIZEX], GameObjectManager& gom, PlayerInfo& playerData, const int key, string& mess)
 {
 	// move spot in required direction
 	bool isArrowKey(const int k);
 	void setKeyDirection(int k, int& dx, int& dy);
-	void eatPill(int, int, GameObjectManager& gom);
+	void eatPill(GameObjectManager& gom, PlayerInfo& playerData);
 	assert(isArrowKey(key));
 
 	// reset message to blank
@@ -401,17 +403,18 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, const int key
 	case PILL:
 		gom.spot.x += dx;
 		gom.spot.y += dy;
-		eatPill(gom.spot.x, gom.spot.y, gom);
+		eatPill(gom, playerData);
 	}
 }
 
-void eatPill(int pillX, int pillY, GameObjectManager& gom)
+void eatPill(GameObjectManager& gom, PlayerInfo& playerData)
 {
-	for each (Item pill in gom.pills)
+	for(int i = 0; i < gom.pills.size(); i++)
 	{
-		if (pill.x == pillX && pill.y == pillY)
+		if (gom.pills.at(i).x == gom.spot.x && gom.pills.at(i).y == gom.spot.y)
 		{
-			pill.visible = false;
+			gom.pills.at(i).visible = false;
+			playerData.score++;
 		}
 	}
 }
@@ -521,7 +524,7 @@ void showGroupMembers(const WORD backColour, const WORD textColour, int x, int y
 void displayNameRequest(const WORD backColour, const WORD textColour, int x, int y) {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 	showMessage(backColour, textColour, x, y, "Enter your name: ");
-	SelectTextColour(clRed);
+	SelectTextColour(clGreen);
 }
 
 //TODO Nico - Basic function to get username, need to add validity checks and length limits.
@@ -532,7 +535,7 @@ string getUserName() {
 }
 
 void checkAndLoadUserSavedData(const string& userName, PlayerInfo& playerData) {
-	ifstream fin(userName + ".txt");		// Attempt to open the user's previous save file.
+	ifstream fin("saves/" + userName + ".txt");		// Attempt to open the user's previous save file.
 	if (fin.fail()) {						// If the file is not present, assume new user.
 		playerData.playerName = userName;	// Set the username entered to be the players name for this session.
 	}
@@ -542,26 +545,27 @@ void checkAndLoadUserSavedData(const string& userName, PlayerInfo& playerData) {
 		fin >> tempUserName;
 		fin >> tempScore;
 		playerData.playerName = tempUserName;
-		playerData.score = tempScore;
+		playerData.highscore = tempScore;
 	}
 }
 //TODO Nico
 void saveUserData(const PlayerInfo& playerData) {
 	ofstream fout;
-	fout.open(playerData.playerName + ".txt");
+	fout.open("saves/" + playerData.playerName + ".txt");
 	if (fout.fail()) {
 		//TODO Throw an error
 	}
 	else {
-		fout << playerData.playerName << " " << playerData.score;
+		fout << playerData.playerName << " " << ((playerData.score > playerData.highscore) ? playerData.score : playerData.highscore);
 	}
 }
 //TODO Nico
 void displayPlayerInformation(const struct PlayerInfo& playerData) {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
-	showMessage(clDarkGrey, clYellow, 40, 20, "Player Name: " + playerData.playerName);
-	showMessage(clDarkGrey, clYellow, 40, 21, "High Score: " + tostring(playerData.score));
+	showMessage(clDarkGrey, clYellow, 40, 19, "Player Name: " + playerData.playerName);
+	showMessage(clDarkGrey, clYellow, 40, 20, "Score:      " + tostring(playerData.score));
+	showMessage(clDarkGrey, clYellow, 40, 21, "High Score: " + tostring(playerData.highscore));
 }
 
 // TODO Nico
@@ -619,7 +623,27 @@ void paintGrid(const GameSpaceManager& gsm)
 	for (int row(0); row < SIZEY; ++row)
 	{
 		for (int col(0); col < SIZEX; ++col)
+		{
+			switch (gsm.grid[row][col])
+			{
+			case SPOT:
+				SelectTextColour(clGreen);
+				break;
+			case PILL:
+				SelectTextColour(clYellow);
+				break;
+			case HOLE:
+				SelectTextColour(clGrey);
+				break;
+			case WALL:
+				SelectTextColour(clWhite);
+				break;
+			case ZOMBIE:
+				SelectTextColour(clRed);
+				break;
+			}
 			cout << gsm.grid[row][col];	// output cell content
+		}
 		cout << endl;
 	}
 }
