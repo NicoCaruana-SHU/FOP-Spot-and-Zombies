@@ -62,9 +62,7 @@ struct Item
 
 struct PlayerInfo {
 	string playerName;
-	int score = 5;				// Represents lives remaining in game. Set to 5 initially to match basic version.
-	int highscore = -1;			// High score default value set to -1 as per the specification.
-	bool hasCheated = false;	// Flag used to determine whether score is recorded at the end of the game.
+	int highscore = -1;			// High score default value set to -1 as per the specification.	
 };
 
 struct GameSpaceManager
@@ -76,16 +74,17 @@ struct GameSpaceManager
 struct GameObjectManager
 {
 	vector<Item> holes, pills, zombies;
-	Item spot;	
+	Item spot;
 };
 
-struct GameData {
+struct GameData {				// Default game variable state, can be constructed differently for difficulties later.
+	int lives = 5;				// Represents lives remaining in game. Set to 5 initially to match basic version.
 	int numberOfHoles = 12;
 	int maxPills = 8;
 	int maxNumberOfZombies = 4;
 	int numberOfPillsLeft = maxPills;
 	int zombiesLeft = maxNumberOfZombies;
-
+	bool hasCheated = false;	// Flag used to determine whether score is recorded at the end of the game.
 };
 
 // TODO Add a difficulty struct with max number of items - Advanced tasks!
@@ -107,7 +106,7 @@ int main()
 	bool wantsToQuit(const int key);
 	bool isArrowKey(const int k);
 	int  getKeyPress();
-	void updateGameData(const char g[][SIZEX], GameObjectManager& gom, PlayerInfo& playerData, const int key, string& mess);
+	void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gameData, const int key, string& mess);
 	void updateGrid(GameSpaceManager& gsm, GameObjectManager& gom);
 	void saveUserData(const PlayerInfo& playerData);
 	void endProgram();
@@ -133,17 +132,17 @@ int main()
 		key = toupper(getKeyPress()); 	// read in  selected key: arrow or letter command
 		if (isArrowKey(key))
 		{
-			updateGameData(gsm.grid, gom, playerData, key, message);			// move spot in that direction
+			updateGameData(gsm.grid, gom, gameData, key, message);			// move spot in that direction
 			updateGrid(gsm, gom);									// update grid information
 		}
 		else {
 			switch (key) {
 			case FREEZE:
-				playerData.hasCheated = true;
+				gameData.hasCheated = true;
 				//TODO STUB - Freeze the zombies in place
 				break;
 			case EXTERMINATE:
-				playerData.hasCheated = true;
+				gameData.hasCheated = true;
 				//Exterminate all zombies on screen
 				if (allZombiesDead(gom.zombies))
 				{
@@ -151,18 +150,20 @@ int main()
 					// but they are not added as 0-3 in the vector, meaning they disappear next frame.
 					// Probably best to just reflag them alive and reset position manually.
 					//spawnZombies(gsm.grid, gom.zombies);
+					gameData.zombiesLeft = gameData.maxNumberOfZombies;
 				}
 				//If all zombies are already dead, resets them to default spawn locations and respawns them
 				else
 				{
 					killZombies(gom.zombies);
+					gameData.zombiesLeft = 0;
 				}
 				break;
 			case EAT:
-				playerData.hasCheated = true;
+				gameData.hasCheated = true;
 				for (int i = 0; i < gom.pills.size(); i++)
 				{
-					gom.pills.at(i).visible = false;					
+					gom.pills.at(i).visible = false;
 				}
 				gameData.numberOfPillsLeft = 0;
 				break;
@@ -191,7 +192,7 @@ void initialiseGame(GameSpaceManager& gsm, GameObjectManager& gom, GameData& gam
 	// initialise grid and place spot in middle
 	void setInitialMazeStructure(char maze[][SIZEX]);
 	void setMaze(char g[][SIZEX], const char b[][SIZEX]);
-	void setItemInitialCoordinates(Item& item, const char itemSymbol, char[][SIZEX]);
+	void setItemInitialCoordinates(const char itemSymbol, Item& item, char[][SIZEX]);
 	void updateGrid(GameSpaceManager& gsm, GameObjectManager& gom);
 	void setMultipleItems(const char itemSymbol, int maxNumOfItems, vector<Item>& itemStore, char grid[][SIZEX]);
 	void spawnZombies(char grid[][SIZEX], vector<Item>& zombies);
@@ -201,10 +202,10 @@ void initialiseGame(GameSpaceManager& gsm, GameObjectManager& gom, GameData& gam
 	spawnZombies(gsm.grid, gom.zombies);							// Place zombies first so that nothing spawns over the corners.
 	setMultipleItems(HOLE, gameData.numberOfHoles, gom.holes, gsm.grid);		// Place the holes second
 	setMultipleItems(PILL, gameData.maxPills, gom.pills, gsm.grid);			// Place the pills
-	setItemInitialCoordinates(gom.spot, SPOT, gsm.grid);			// Finally place Spot
+	setItemInitialCoordinates(SPOT, gom.spot, gsm.grid);			// Finally place Spot
 }
 
-void setItemInitialCoordinates(Item& item, const char itemSymbol, char grid[][SIZEX])
+void setItemInitialCoordinates(const char itemSymbol, Item& item, char grid[][SIZEX])
 {												// NICO - Replaced the constant recalling itself with a do-while loop - more efficient!
 	void placeItem(char g[][SIZEX], const Item& item);
 	do {
@@ -247,11 +248,12 @@ void setInitialMazeStructure(char maze[][SIZEX])
 
 void setMultipleItems(const char itemSymbol, int maxNumOfItems, vector<Item>& itemStore, char grid[][SIZEX])
 {
+	void setItemInitialCoordinates(const char itemSymbol, Item& item, char grid[][SIZEX]);
 	void placeItem(char g[][SIZEX], const Item& item);
 
 	for (int i = maxNumOfItems; i > 0; --i) {
 		Item i1;
-		setItemInitialCoordinates(i1, itemSymbol, grid);
+		setItemInitialCoordinates(itemSymbol,i1, grid);
 		itemStore.push_back(i1);
 		placeItem(grid, i1);
 	}
@@ -384,12 +386,12 @@ void placeMultipleItems(char g[][SIZEX], const vector<Item>& itemStore) {
 // ---------------------------------------------------------------------------
 // ----- move items on the grid
 // ---------------------------------------------------------------------------
-void updateGameData(const char g[][SIZEX], GameObjectManager& gom, PlayerInfo& playerData, const int key, string& mess)
+void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gameData, const int key, string& mess)
 {
 	// move spot in required direction
 	bool isArrowKey(const int k);
 	void setKeyDirection(int k, int& dx, int& dy);
-	void eatPill(GameObjectManager& gom, PlayerInfo& playerData);
+	void eatPill(GameObjectManager& gom, GameData& gameData);
 	assert(isArrowKey(key));
 
 	// reset message to blank
@@ -413,26 +415,27 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, PlayerInfo& p
 	case PILL:
 		gom.spot.x += dx;
 		gom.spot.y += dy;
-		eatPill(gom, playerData);
+		eatPill(gom, gameData);
 		break;
 	case HOLE:
 		gom.spot.x += dx;
 		gom.spot.y += dy;
-		playerData.score--;
-		if (playerData.score <= 0) {
-			//TODO STUB GameOver
+		gameData.lives--;
+		if (gameData.lives <= 0) {
+			//TODO STUB GameOverLose
 		}
 	}
 }
 
-void eatPill(GameObjectManager& gom, PlayerInfo& playerData)
+void eatPill(GameObjectManager& gom, GameData& gameData)
 {
 	for (int i = 0; i < gom.pills.size(); i++)
 	{
 		if (gom.pills.at(i).x == gom.spot.x && gom.pills.at(i).y == gom.spot.y)
 		{
 			gom.pills.at(i).visible = false;
-			playerData.score++;
+			gameData.lives++;
+			gameData.numberOfPillsLeft--;
 		}
 	}
 }
@@ -517,7 +520,6 @@ void showMessage(const WORD backColour, const WORD textColour, int x, int y, con
 	cout << message;
 }
 
-// TODO Nico
 // Display the games title on sequential lines from a set starting point in defined colours.
 void showGameTitle(const WORD backColour, const WORD textColour, int x, int y) {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
@@ -566,34 +568,34 @@ void checkAndLoadUserSavedData(const string& userName, PlayerInfo& playerData) {
 		playerData.highscore = tempScore;
 	}
 }
-//TODO Nico
-void saveUserData(const PlayerInfo& playerData) {
+
+// Records the playername and a new high score into a text file.
+// IN: PlayerInfo struct containing playerName and previous Highscore, newHighScore integer
+// OUT:
+void saveUserData(const PlayerInfo& playerData, const int newHighScore) {
 	ofstream fout;
 	fout.open("saves/" + playerData.playerName + ".txt");
 	if (fout.fail()) {
 		//TODO Throw an error
 	}
 	else {
-		fout << playerData.playerName << " " << ((playerData.score > playerData.highscore) ? playerData.score : playerData.highscore);
+		fout << playerData.playerName << " " << newHighScore;
 	}
 }
-//TODO Nico
+
 void displayPlayerInformation(const PlayerInfo& playerData, int x, int y) {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
 	showMessage(clDarkGrey, clYellow, x, y, "Player Name: " + playerData.playerName);
-	showMessage(clDarkGrey, clYellow, x, y+1, "Lives:      " + tostring(playerData.score));
-	showMessage(clDarkGrey, clYellow, x, y+2, "High Score: " + tostring(playerData.highscore));
+	showMessage(clDarkGrey, clYellow, x, y + 1, "High Score: " + tostring(playerData.highscore));
 }
 
-// TODO Nico
 // Entry screen display
 void displayEntryScreen(struct PlayerInfo& playerData) {
 	void showGameTitle(const WORD backColour, const WORD textColour, int x, int y);
 	void showGroupMembers(const WORD backColour, const WORD textColour, int x, int y);
 	void displayTimeAndDate(const WORD firstColour, const WORD secondColour, const int x, const int y);
 	void displayNameRequest(const WORD backColour, const WORD textColour, int x, int y);
-	void checkAndLoadUserSavedData(const string& userName, struct PlayerInfo& playerData);
 	string getUserName();
 	void saveUserData(const PlayerInfo& playerData);
 
@@ -602,13 +604,14 @@ void displayEntryScreen(struct PlayerInfo& playerData) {
 	displayTimeAndDate(clDarkGrey, clYellow, 40, 1);
 	displayNameRequest(clDarkGrey, clYellow, 10, 20);
 	checkAndLoadUserSavedData(getUserName(), playerData);
-	saveUserData(playerData); //HACK Just for testing save function.
 }
 
 void displayGameInformation(const GameData& gameData, int x, int y) {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
-	showMessage(clDarkGrey, clYellow, x, y, "NUMBER OF PILLS REMAINING: " + tostring(gameData.numberOfPillsLeft));
+	showMessage(clDarkGrey, clYellow, x, y, "REMAINING LIVES: " + tostring(gameData.lives));
+	showMessage(clDarkGrey, clYellow, x, y + 1, "ZOMBIES LEFT: " + tostring(gameData.zombiesLeft));
+	showMessage(clDarkGrey, clYellow, x, y + 2, "NUMBER OF PILLS REMAINING: " + tostring(gameData.numberOfPillsLeft));
 
 }
 
@@ -634,8 +637,8 @@ void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const 
 	showMessage(clRed, clGreen, 40, 8, "TO MOVE USE KEYBOARD ARROWS ");
 	showMessage(clRed, clGreen, 40, 9, "TO QUIT ENTER 'Q'           ");
 
-	displayPlayerInformation(playerData, 40, 19);
-	displayGameInformation(gameData, 40, 25);
+	displayPlayerInformation(playerData, 40, 15);
+	displayGameInformation(gameData, 40, 20);
 
 	// display grid contents
 	paintGrid(gsm);
@@ -682,10 +685,10 @@ void endProgram()
 	system("pause");	// hold output screen until a keyboard key is hit
 }
 
-void gameOver(const PlayerInfo& playerData) {
-	void saveUserData(const PlayerInfo& playerData);
-	if (!playerData.hasCheated) { // TODO Should probably pull this out of here and make a generic game over function that can be used after death/win too.
-		saveUserData(playerData);
+void gameOver(const PlayerInfo& playerData, const GameData& gameData) {
+	void saveUserData(const PlayerInfo& playerData, const int newHighScore);
+	if ((!gameData.hasCheated) && (gameData.lives > playerData.highscore)) {
+		saveUserData(playerData, gameData.lives);
 	}
 }
 
@@ -697,7 +700,7 @@ void gameOver(const PlayerInfo& playerData) {
 void displayTimeAndDate(const WORD firstColour, const WORD secondColour, const int x, const int y) {
 	void getTime(struct tm &timeLocal);
 
-	assert(true); // TODO Assert needs sorting, although probably wont be needed, function is simple enough to run
+	assert(true);
 	struct tm timeLocal; // create time structure called timeLocal
 	getTime(timeLocal); //populate structure with values
 
@@ -726,63 +729,3 @@ void getTime(struct tm &timeLocal) { // Get raw time data from system and conver
 
 	localtime_s(&timeLocal, &rawTime); //convert raw time into usable time structure and insert into struct timeLocal
 }
-
-// TODO Removed functions - delete at end.
-/*
-//UNDONE Array comparison function. Quite inefficient to use, if you can think of a better way, let us know!
-//// IN: Copy of intended position variable to use as iterator, const reference of the item to verify, Array of items to check uniqueness against.
-//// OUT: TRUE if Item is unique, FALSE if item already present.
-//// Precondition:
-//// Postcondition:
-//bool isPositionUnique(int i, const Item& item, const vector<Item>& array)
-//{
-//	bool inArray = false;
-//	while ((i - 1 >= 0) && (!inArray)) {	// Checks against the previous item(s) added to the array. Flag used to terminate loop early if found
-//		if (item.x == array[i].x) {			// First property checked for equal value.
-//			if (item.y == array[i].y) {		// Second property checked if the first was a match.
-//				inArray = true;
-//			}
-//		}
-//		--i;
-//	}
-//	return !inArray;
-//}
-
-//UNDONE void createPills(char maze[][SIZEX], vector<Item>& pills)
-//{
-//	void placeItem(char[][SIZEX], const Item& item);
-//	for (int pillCount = 0; pillCount < MAXPILLS; pillCount++)
-//	{
-//		Item pill;
-//		do
-//		{
-//			pill = { Random(SIZEX), Random(SIZEY), PILL };
-//		} while (maze[pill.x][pill.y] != TUNNEL);
-//		pills.push_back(pill);
-//		placeItem(maze, pill);
-//	}
-//}
-//UNDONE Hole assignment function
-// IN: Array representing the maze, Amount of holes to use, Array to hold the hole items.
-// OUT:
-// Precondition: None
-// Postcondition: All holes will be assigned an x and y coord, ready to insert into grid
-//void setHoleInitialPosition(char maze[][SIZEX], int maxHoles, vector<Item>& holes) {
-//	void setSpotInitialCoordinates(Item& spot, char maze[][SIZEX]);
-//	//bool isPositionUnique(int i, const Item& item, const vector<Item>& array);
-//	void placeItem(char g[][SIZEX], const Item& item);
-//
-//	for (int i = 0; i < maxHoles; ++i) {			// place holes until max is reached .
-//		Item h = { 0,0, HOLE };						// Loop used here increments rather than decrements so that the
-//		setSpotInitialCoordinates(h, maze);			// following Array comparision function doesnt have to take the array size variable.
-//		//while (!isPositionUnique(i, h, holes))		// TODO Still having issue where spot can spawn on hole location.
-//		//{											// Will probably need fixing in the spot placement function though.
-//		//	setSpotInitialCoordinates(h, maze);
-//		//}
-//		holes.push_back(h);
-//		placeItem(maze, h);
-//	}
-//	// Could have just set the holes into the base maze directly to render faster.
-//	// Doing it this way allows us the option to move the holes ingame if we need to - additional functionality? :)
-//}
-*/
