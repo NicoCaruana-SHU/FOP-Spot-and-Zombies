@@ -1,8 +1,6 @@
-// TODO My tasks, code the holes and the cheats.!!!
 // ---------------------------------------------------------------------------
-// Program: Skeleton for Task 1c – group assignment
-// Author: Pascale Vacher
-// Last updated: 26 February 2018
+// Program: Task 1c – group assignment
+// Author: Charlie Batten, Matt Bellamy, Nico Caruana
 // ---------------------------------------------------------------------------
 
 
@@ -17,9 +15,9 @@
 #include <cassert> 
 #include <string>
 #include <sstream>
-#include <time.h> // For time display
-#include <vector>
-#include <fstream> // For saving/loading files
+#include <time.h>	// For time display
+#include <vector>	// For storing item data 
+#include <fstream>	// For saving/loading files
 
 using namespace std;
 
@@ -35,10 +33,10 @@ using namespace std;
 const int  SIZEX(25);    		// horizontal dimension
 const int  SIZEY(20);			// vertical dimension
 // defining symbols used for display of the grid and content
-const char SPOT('@');   		// spot
-const char TUNNEL(' ');			// tunnel
-const char WALL('#');    		// border
-const char HOLE('0');			// Character used to represent holes
+const char SPOT('@');   		
+const char TUNNEL(' ');			
+const char WALL('#');    		
+const char HOLE('0');			
 const char PILL('*');
 const char ZOMBIE('Z');
 
@@ -62,21 +60,17 @@ struct Item
 	bool alive = true;
 };
 
-//struct Spot : Item {
-//	int lives;
-//};
-
 struct PlayerInfo {
 	string playerName;
-	int score = 0;
-	int highscore = 0;
-	bool hasCheated = false;
+	int score = 5;				// Represents lives remaining in game. Set to 5 initially to match basic version.
+	int highscore = -1;			// High score default value set to -1 as per the specification.
+	bool hasCheated = false;	// Flag used to determine whether score is recorded at the end of the game.
 };
 
 struct GameSpaceManager
 {
-	char grid[SIZEY][SIZEX];			// grid for display
-	char maze[SIZEY][SIZEX];			// structure of the maze
+	char grid[SIZEY][SIZEX];	// grid for display
+	char maze[SIZEY][SIZEX];	// structure of the maze
 };
 
 struct GameObjectManager
@@ -140,9 +134,11 @@ int main()
 		else {
 			switch (key) {
 			case FREEZE:
+				playerData.hasCheated = true;
 				//TODO STUB - Freeze the zombies in place
 				break;
 			case EXTERMINATE:
+				playerData.hasCheated = true;
 				//Exterminate all zombies on screen
 				if (allZombiesDead(gom.zombies))
 				{
@@ -155,10 +151,10 @@ int main()
 				else
 				{
 					killZombies(gom.zombies);
-					updateGrid(gsm, gom); //Re-Update grid to apply dead zombies
 				}
 				break;
 			case EAT:
+				playerData.hasCheated = true;
 				//TODO STUB - Eat all pills. Permanently disappear from the board and numremainingpills set to 0;
 				break;
 			case QUIT:
@@ -167,10 +163,13 @@ int main()
 			default:
 				message = "INVALID KEY!";	// set 'Invalid key' message
 			}
+			updateGrid(gsm, gom); //Re-Update grid to apply changes
 		}
 		paintGame(gsm, playerData, message);		// display game info, modified grid and messages
 	} while (!wantsToQuit(key));					// while user does not want to quit
+	if (!playerData.hasCheated) { // TODO Should probably pull this out of here and make a generic game over function that can be used after death/win too.
 	saveUserData(playerData);
+	}
 	endProgram();									// display final message
 	return 0;
 }
@@ -289,7 +288,7 @@ void killZombies(vector<Item>& zombies)
 void spawnZombies(char grid[][SIZEX], vector<Item>& zombieStore)
 {
 	void placeItem(char g[][SIZEX], const Item& item);
-	
+
 	//Position defaults
 	int xDef[4] = { 1, 1, SIZEX - 2, SIZEX - 2 };
 	int yDef[4] = { 1, SIZEY - 2, SIZEY - 2, 1 };
@@ -358,7 +357,7 @@ void placeItem(char g[][SIZEX], const Item& item)
 {
 	// place item at its new position in grid
 	if (item.visible) { // check for visible flag before rendering
-	g[item.y][item.x] = item.symbol;
+		g[item.y][item.x] = item.symbol;
 	}
 }
 
@@ -408,12 +407,20 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, PlayerInfo& p
 		gom.spot.x += dx;
 		gom.spot.y += dy;
 		eatPill(gom, playerData);
+		break;
+	case HOLE:
+		gom.spot.x += dx;
+		gom.spot.y += dy;
+		playerData.score--;
+		if (playerData.score <= 0) {
+			//TODO STUB GameOver
+		}
 	}
 }
 
 void eatPill(GameObjectManager& gom, PlayerInfo& playerData)
 {
-	for(int i = 0; i < gom.pills.size(); i++)
+	for (int i = 0; i < gom.pills.size(); i++)
 	{
 		if (gom.pills.at(i).x == gom.spot.x && gom.pills.at(i).y == gom.spot.y)
 		{
