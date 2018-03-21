@@ -105,7 +105,7 @@ int main()
 	bool isArrowKey(const int k);
 	int  getKeyPress();
 	void updateGameData(const char g[][SIZEX], GameObjectManager& gom, PlayerInfo& playerData, const int key, string& mess);
-	void updateGrid(GameSpaceManager& gsm, const GameObjectManager& gom);
+	void updateGrid(GameSpaceManager& gsm, GameObjectManager& gom);
 	void saveUserData(const PlayerInfo& playerData);
 	void endProgram();
 	// local variable declarations
@@ -120,9 +120,6 @@ int main()
 	const int numberOfHoles(12);
 	const int MAXPILLS(8);
 	const int MAXNUMBEROFZOMBIES(4);
-
-	// Declaration of Zombies - initial placement is done in 'spawnZombies' function
-	// HACK Not needed vector<Item> zombies = { { 0, 0, ZOMBIE, true },{ 0, 0, ZOMBIE, true },{ 0, 0, ZOMBIE, true },{ 0, 0, ZOMBIE, true } };
 
 	// action...
 	Seed();												// seed the random number generator
@@ -190,7 +187,7 @@ void initialiseGame(GameSpaceManager& gsm, const int numberOfHoles, const int MA
 	void spawnZombies(char maze[][SIZEX], vector<Item>& zombies);
 
 	setInitialMazeStructure(gsm.maze);								// initialise maze
-	spawnZombies(gsm.grid, gom.zombies);							//TODO Place zombies first so that nothing spawns over the corners.
+	spawnZombies(gsm.maze, gom.zombies);							//TODO Place zombies first so that nothing spawns over the corners.
 	setMultipleItems(HOLE, numberOfHoles, gom.holes, gsm.maze);		//Place the holes second
 	setMultipleItems(PILL, MAXPILLS, gom.pills, gsm.maze);			// Place the pills
 	setItemInitialCoordinates(gom.spot, SPOT, gsm.maze);			// Finally place Spot
@@ -286,10 +283,10 @@ void killZombies(vector<Item>& zombies)
 void spawnZombies(char maze[][SIZEX], vector<Item>& zombieStore)
 {
 	void placeItem(char g[][SIZEX], const Item& item);
-	//Hack Temporarily disabled void placeZombies(char[][SIZEX], vector<Item> zombies);
+	
 	//Position defaults
-	int xDef[4] = { 1, 1, 23, 23 };
-	int yDef[4] = { 1, 18, 18, 1 };
+	int xDef[4] = { 1, 1, SIZEX - 2, SIZEX - 2 };
+	int yDef[4] = { 1, SIZEY - 2, SIZEY - 2, 1 };
 
 	for (int i = 0; i < 4; i++)
 	{
