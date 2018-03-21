@@ -274,7 +274,7 @@ void placeMultipleItems(char g[][SIZEX], const vector<Item>& itemStore) {
 // ---------------------------------------------------------------------------
 // ----- move items on the grid
 // ---------------------------------------------------------------------------
-void updateGameData(char g[][SIZEX], GameObjectManager& gom, const int key, string& mess)
+void updateGameData(const char g[][SIZEX], GameObjectManager& gom, const int key, string& mess)
 {
 	// move spot in required direction
 	bool isArrowKey(const int k);
