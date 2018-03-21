@@ -436,7 +436,7 @@ string getUserName() {
 }
 
 void checkAndLoadUserSavedData(const string& userName, PlayerInfo& playerData) {
-	ifstream fin(userName + ".txt");		// Attempt to open the user's previous save file.
+	ifstream fin("saves/" + userName + ".txt");		// Attempt to open the user's previous save file.
 	if (fin.fail()) {						// If the file is not present, assume new user.
 		playerData.playerName = userName;	// Set the username entered to be the players name for this session.
 	}
@@ -452,7 +452,7 @@ void checkAndLoadUserSavedData(const string& userName, PlayerInfo& playerData) {
 //TODO Nico
 void saveUserData(const PlayerInfo& playerData) {
 	ofstream fout;
-	fout.open(playerData.playerName + ".txt");
+	fout.open("saves/" + playerData.playerName + ".txt");
 	if (fout.fail()) {
 		//TODO Throw an error
 	}
