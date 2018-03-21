@@ -64,7 +64,7 @@ struct Item
 
 struct PlayerInfo {
 	string playerName;
-	int score = -1;
+	int score = 0;
 	bool hasCheated = false;
 };
 
@@ -96,10 +96,9 @@ int main()
 	bool wantsToQuit(const int key);
 	bool isArrowKey(const int k);
 	int  getKeyPress();
-	void updateGameData(const char g[][SIZEX], GameObjectManager& gom, const int key, string& mess);
+	void updateGameData(const char g[][SIZEX], GameObjectManager& gom, PlayerInfo& playerData, const int key, string& mess);
 	void updateGrid(GameSpaceManager& gsm, const GameObjectManager& gom);
 	void endProgram();
-
 	// local variable declarations
 
 	GameSpaceManager gsm;
@@ -125,7 +124,7 @@ int main()
 		key = toupper(getKeyPress()); 	// read in  selected key: arrow or letter command
 		if (isArrowKey(key))
 		{
-			updateGameData(gsm.grid, gom, key, message);			// move spot in that direction
+			updateGameData(gsm.grid, gom, playerData, key, message);			// move spot in that direction
 			updateGrid(gsm, gom);									// update grid information
 		}
 		else {
@@ -253,7 +252,7 @@ void setMaze(char grid[][SIZEX], const char maze[][SIZEX])
 void placeItem(char g[][SIZEX], const Item& item)
 {
 	// place item at its new position in grid
-	g[item.y][item.x] = item.symbol;
+	g[item.y][item.x] = (item.visible) ? item.symbol : ' ';
 }
 
 // Multiple item placement function
@@ -266,20 +265,19 @@ void placeMultipleItems(char g[][SIZEX], const vector<Item>& itemStore) {
 
 	for (int i(itemStore.size() - 1); i >= 0; --i) { // place items until max is reached
 		// TODO Item renderer.. probably a good place for a visible check here.
-
-		placeItem(g, itemStore[i]);
+		placeItem(g, itemStore.at(i));
 	}
 }
 
 // ---------------------------------------------------------------------------
 // ----- move items on the grid
 // ---------------------------------------------------------------------------
-void updateGameData(char g[][SIZEX], GameObjectManager& gom, const int key, string& mess)
+void updateGameData(const char g[][SIZEX], GameObjectManager& gom, PlayerInfo& playerData, const int key, string& mess)
 {
 	// move spot in required direction
 	bool isArrowKey(const int k);
 	void setKeyDirection(int k, int& dx, int& dy);
-	void eatPill(int, int, GameObjectManager& gom);
+	void eatPill(GameObjectManager& gom, PlayerInfo& playerData);
 	assert(isArrowKey(key));
 
 	// reset message to blank
@@ -303,17 +301,18 @@ void updateGameData(char g[][SIZEX], GameObjectManager& gom, const int key, stri
 	case PILL:
 		gom.spot.x += dx;
 		gom.spot.y += dy;
-		eatPill(gom.spot.x, gom.spot.y, gom);
+		eatPill(gom, playerData);
 	}
 }
 
-void eatPill(int pillX, int pillY, GameObjectManager& gom)
+void eatPill(GameObjectManager& gom, PlayerInfo& playerData)
 {
-	for each (Item pill in gom.pills)
+	for(int i = 0; i < gom.pills.size(); i++)
 	{
-		if (pill.x == pillX && pill.y == pillY)
+		if (gom.pills.at(i).x == gom.spot.x && gom.pills.at(i).y == gom.spot.y)
 		{
-			pill.visible = false;
+			gom.pills.at(i).visible = false;
+			playerData.score++;
 		}
 	}
 }
