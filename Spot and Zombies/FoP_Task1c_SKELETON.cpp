@@ -301,24 +301,23 @@ void spawnZombies(char maze[][SIZEX], vector<Item>& zombieStore)
 	}
 }
 
-//// Zombies placement function
-//// IN: Array representing the maze, Vector representing all zombies
-//// OUT: Relevant zombies placed on relevant coordinates on the grid
-//// Precondition: None
-//// Postcondition: All zombies that are alive are placed on the grid at coordinates to match their own coordinate values
-//void placeZombies(char maze[][SIZEX], vector<Item> zombies)
-//{
-//	void placeItem(char[][SIZEX], Item);
-//
-//	for (int i = 0; i < 4; i++)
-//	{
-//		if (zombies.at(i).alive)
-//		{
-//			{ zombies.at(i).x, zombies.at(i).y, zombies.at(i).symbol };
-//			placeItem(maze, zombie);
-//		}
-//	}
-//}
+// Zombies placement function
+// IN: Array representing the maze, Vector representing all zombies
+// OUT: Relevant zombies placed on relevant coordinates on the grid
+// Precondition: None
+// Postcondition: All zombies that are alive are placed on the grid at coordinates to match their own coordinate values
+void placeZombies(char maze[][SIZEX], vector<Item> zombies)
+{
+	void placeItem(char g[][SIZEX], const Item& item);
+
+	for (int i = 0; i < 4; i++)
+	{
+		if (zombies.at(i).alive)
+		{
+			placeItem(maze, zombies[i]);
+		}
+	}
+}
 
 
 // ---------------------------------------------------------------------------
