@@ -100,6 +100,7 @@ int main()
 	int  getKeyPress();
 	void updateGameData(const char g[][SIZEX], GameObjectManager& gom, PlayerInfo& playerData, const int key, string& mess);
 	void updateGrid(GameSpaceManager& gsm, const GameObjectManager& gom);
+	void saveUserData(const PlayerInfo& playerData);
 	void endProgram();
 	// local variable declarations
 
@@ -149,6 +150,7 @@ int main()
 		}
 		paintGame(gsm, playerData, message);		// display game info, modified grid and messages
 	} while (!wantsToQuit(key));					// while user does not want to quit
+	saveUserData(playerData);
 	endProgram();									// display final message
 	return 0;
 }
@@ -423,7 +425,7 @@ void showGroupMembers(const WORD backColour, const WORD textColour, int x, int y
 void displayNameRequest(const WORD backColour, const WORD textColour, int x, int y) {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 	showMessage(backColour, textColour, x, y, "Enter your name: ");
-	SelectTextColour(clRed);
+	SelectTextColour(clGreen);
 }
 
 //TODO Nico - Basic function to get username, need to add validity checks and length limits.
@@ -525,7 +527,7 @@ void paintGrid(const GameSpaceManager& gsm)
 			switch (gsm.grid[row][col])
 			{
 			case SPOT:
-				SelectTextColour(clDarkGreen);
+				SelectTextColour(clGreen);
 				break;
 			case PILL:
 				SelectTextColour(clYellow);
