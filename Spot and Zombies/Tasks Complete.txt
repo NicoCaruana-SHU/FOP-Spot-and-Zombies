@@ -1,4 +1,0 @@
-Spawning on wall
-Up/Down arrow movement
-Maze size and walls
-Message Colur
