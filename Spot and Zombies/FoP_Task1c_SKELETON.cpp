@@ -98,7 +98,7 @@ int main()
 	void displayEntryScreen(PlayerInfo& playerData);
 	void initialiseGame(GameSpaceManager& gsm, const int numberOfHoles, const int MAXPILLS, GameObjectManager& gom);
 	void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const string& mess);
-	
+	void spawnZombies(char grid[][SIZEX], vector<Item>& zombies);
 	void killZombies(vector<Item>& zombies);
 	bool allZombiesDead(vector<Item> zombies);
 	bool wantsToQuit(const int key);
@@ -146,7 +146,10 @@ int main()
 				//Exterminate all zombies on screen
 				if (allZombiesDead(gom.zombies))
 				{
-					//HACK disabled temporarily spawnZombies(gsm.grid, gom.zombies);
+					// TODO Need a different way of respawning the zombies. Doing it this way temporarily adds them back to screen,
+					// but they are not added as 0-3 in the vector, meaning they disappear next frame.
+					// Probably best to just reflag them alive and reset position manually.
+					//spawnZombies(gsm.grid, gom.zombies);
 				}
 				//If all zombies are already dead, resets them to default spawn locations and respawns them
 				else
@@ -181,26 +184,29 @@ void initialiseGame(GameSpaceManager& gsm, const int numberOfHoles, const int MA
 {
 	// initialise grid and place spot in middle
 	void setInitialMazeStructure(char maze[][SIZEX]);
+	void setMaze(char g[][SIZEX], const char b[][SIZEX]);
 	void setItemInitialCoordinates(Item& item, const char itemSymbol, char[][SIZEX]);
 	void updateGrid(GameSpaceManager& gsm, GameObjectManager& gom);
-	void setMultipleItems(const char itemSymbol, int maxNumOfItems, vector<Item>& itemStore, char maze[][SIZEX]);
-	void spawnZombies(char maze[][SIZEX], vector<Item>& zombies);
+	void setMultipleItems(const char itemSymbol, int maxNumOfItems, vector<Item>& itemStore, char grid[][SIZEX]);
+	void spawnZombies(char grid[][SIZEX], vector<Item>& zombies);
 
 	setInitialMazeStructure(gsm.maze);								// initialise maze
-	spawnZombies(gsm.maze, gom.zombies);							//TODO Place zombies first so that nothing spawns over the corners.
-	setMultipleItems(HOLE, numberOfHoles, gom.holes, gsm.maze);		//Place the holes second
-	setMultipleItems(PILL, MAXPILLS, gom.pills, gsm.maze);			// Place the pills
-	setItemInitialCoordinates(gom.spot, SPOT, gsm.maze);			// Finally place Spot
-	updateGrid(gsm, gom);											// prepare grid
+	setMaze(gsm.grid, gsm.maze);									// Create first empty game frame
+	spawnZombies(gsm.grid, gom.zombies);							// Place zombies first so that nothing spawns over the corners.
+	setMultipleItems(HOLE, numberOfHoles, gom.holes, gsm.grid);		// Place the holes second
+	setMultipleItems(PILL, MAXPILLS, gom.pills, gsm.grid);			// Place the pills
+	setItemInitialCoordinates(gom.spot, SPOT, gsm.grid);			// Finally place Spot
 }
 
-void setItemInitialCoordinates(Item& item, const char itemSymbol, char maze[][SIZEX])
+void setItemInitialCoordinates(Item& item, const char itemSymbol, char grid[][SIZEX])
 {												// NICO - Replaced the constant recalling itself with a do-while loop - more efficient!
+	void placeItem(char g[][SIZEX], const Item& item);
 	do {
 		item.x = Random(SIZEX - 2);
 		item.y = Random(SIZEY - 2);
-	} while (maze[item.y][item.x] != TUNNEL);
+	} while (grid[item.y][item.x] != TUNNEL);
 	item.symbol = itemSymbol;
+	placeItem(grid, item);
 }
 
 void setInitialMazeStructure(char maze[][SIZEX])
@@ -233,15 +239,15 @@ void setInitialMazeStructure(char maze[][SIZEX])
 			maze[row][col] = (col == 0 || col == SIZEX - 1 || row == 0 || row == SIZEY - 1) ? WALL : TUNNEL;
 }
 
-void setMultipleItems(const char itemSymbol, int maxNumOfItems, vector<Item>& itemStore, char maze[][SIZEX])
+void setMultipleItems(const char itemSymbol, int maxNumOfItems, vector<Item>& itemStore, char grid[][SIZEX])
 {
 	void placeItem(char g[][SIZEX], const Item& item);
 
 	for (int i = maxNumOfItems; i > 0; --i) {
 		Item i1;
-		setItemInitialCoordinates(i1, itemSymbol, maze);
+		setItemInitialCoordinates(i1, itemSymbol, grid);
 		itemStore.push_back(i1);
-		placeItem(maze, i1);
+		placeItem(grid, i1);
 	}
 }
 
@@ -280,7 +286,7 @@ void killZombies(vector<Item>& zombies)
 // OUT: Zombie coordinates reset to defaults, zombies set to be alive
 // Precondition: None
 // Postcondition: All zombies placed in their corners and alive
-void spawnZombies(char maze[][SIZEX], vector<Item>& zombieStore)
+void spawnZombies(char grid[][SIZEX], vector<Item>& zombieStore)
 {
 	void placeItem(char g[][SIZEX], const Item& item);
 	
@@ -297,16 +303,16 @@ void spawnZombies(char maze[][SIZEX], vector<Item>& zombieStore)
 		z1.symbol = ZOMBIE;
 		z1.visible = 1;
 		zombieStore.push_back(z1);
-		placeItem(maze, z1);
+		placeItem(grid, z1);
 	}
 }
 
 // Zombies placement function
-// IN: Array representing the maze, Vector representing all zombies
+// IN: Array representing the grid, Vector representing all zombies
 // OUT: Relevant zombies placed on relevant coordinates on the grid
 // Precondition: None
 // Postcondition: All zombies that are alive are placed on the grid at coordinates to match their own coordinate values
-void placeZombies(char maze[][SIZEX], vector<Item> zombies)
+void placeZombies(char grid[][SIZEX], vector<Item> zombies)
 {
 	void placeItem(char g[][SIZEX], const Item& item);
 
@@ -314,7 +320,7 @@ void placeZombies(char maze[][SIZEX], vector<Item> zombies)
 	{
 		if (zombies.at(i).alive)
 		{
-			placeItem(maze, zombies[i]);
+			placeItem(grid, zombies[i]);
 		}
 	}
 }
@@ -334,7 +340,7 @@ void updateGrid(GameSpaceManager& gsm, GameObjectManager& gom)
 
 	// Not sent as complete GSM/GOM, to keep constant array restrictions.
 	setMaze(gsm.grid, gsm.maze);					// reset the empty maze configuration into grid 
-	placeZombies(gsm.grid, gom.zombies);
+	placeZombies(gsm.grid, gom.zombies);			// place the zombies
 	placeMultipleItems(gsm.grid, gom.holes);		// Place holes on the grid
 	placeMultipleItems(gsm.grid, gom.pills);		// Place pills onto the grid
 	placeItem(gsm.grid, gom.spot);					// set spot in grid
@@ -351,11 +357,13 @@ void setMaze(char grid[][SIZEX], const char maze[][SIZEX])
 void placeItem(char g[][SIZEX], const Item& item)
 {
 	// place item at its new position in grid
-	g[item.y][item.x] = (item.visible) ? item.symbol : ' ';
+	if (item.visible) { // check for visible flag before rendering
+	g[item.y][item.x] = item.symbol;
+	}
 }
 
 // Multiple item placement function
-// IN: Array representing the maze, Vector holding the items.
+// IN: Array representing the grid, Vector holding the items.
 // OUT:
 // Precondition: None
 // Postcondition: All items will be placed on grid
@@ -363,7 +371,6 @@ void placeMultipleItems(char g[][SIZEX], const vector<Item>& itemStore) {
 	void placeItem(char g[][SIZEX], const Item& item);
 
 	for (int i(itemStore.size() - 1); i >= 0; --i) { // place items until max is reached
-		// TODO Item renderer.. probably a good place for a visible check here.
 		placeItem(g, itemStore.at(i));
 	}
 }
