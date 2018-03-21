@@ -106,6 +106,7 @@ int main()
 	int  getKeyPress();
 	void updateGameData(const char g[][SIZEX], GameObjectManager& gom, PlayerInfo& playerData, const int key, string& mess);
 	void updateGrid(GameSpaceManager& gsm, GameObjectManager& gom);
+	void eatAllPills(GameObjectManager& gom, PlayerInfo& playerData);
 	void saveUserData(const PlayerInfo& playerData);
 	void endProgram();
 	// local variable declarations
@@ -158,8 +159,9 @@ int main()
 					updateGrid(gsm, gom); //Re-Update grid to apply dead zombies
 				}
 				break;
-			case EAT:
-				//TODO STUB - Eat all pills. Permanently disappear from the board and numremainingpills set to 0;
+			case EAT:				
+				eatAllPills(gom, playerData);
+				playerData.hasCheated = true;
 				break;
 			case QUIT:
 				break; //Maybe do something here.. put it in for now to simply get rid of the invalid key message before terminating loop on quit command.
@@ -321,6 +323,20 @@ void placeZombies(char grid[][SIZEX], vector<Item> zombies)
 		if (zombies.at(i).alive)
 		{
 			placeItem(grid, zombies[i]);
+		}
+	}
+}
+
+//Eat Pills Cheat
+void eatAllPills(GameObjectManager& gom, PlayerInfo& playerData)
+{
+	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
+	for (int i = 0; i < gom.pills.size(); i++)
+	{
+		if (!playerData.hasCheated)
+		{
+			gom.pills.at(i).visible = false;
+			playerData.score++;
 		}
 	}
 }
