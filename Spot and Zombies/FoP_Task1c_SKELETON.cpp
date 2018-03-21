@@ -39,6 +39,8 @@ const char TUNNEL(' ');			// tunnel
 const char WALL('#');    		// border
 const char HOLE('0');			// Character used to represent holes
 const char PILL('*');
+const char ZOMBIE('Z');
+
 // defining the command letters to move the spot on the maze
 const int  UP(72);				// up arrow
 const int  DOWN(80); 			// down arrow
@@ -519,7 +521,27 @@ void paintGrid(const GameSpaceManager& gsm)
 	for (int row(0); row < SIZEY; ++row)
 	{
 		for (int col(0); col < SIZEX; ++col)
+		{
+			switch (gsm.grid[row][col])
+			{
+			case SPOT:
+				SelectTextColour(clDarkGreen);
+				break;
+			case PILL:
+				SelectTextColour(clYellow);
+				break;
+			case HOLE:
+				SelectTextColour(clGrey);
+				break;
+			case WALL:
+				SelectTextColour(clWhite);
+				break;
+			case ZOMBIE:
+				SelectTextColour(clRed);
+				break;
+			}
 			cout << gsm.grid[row][col];	// output cell content
+		}
 		cout << endl;
 	}
 }
