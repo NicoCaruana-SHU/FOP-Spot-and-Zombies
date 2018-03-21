@@ -1,3 +1,4 @@
+// TODO My tasks, code the holes and the cheats.!!!
 // ---------------------------------------------------------------------------
 // Program: Skeleton for Task 1c – group assignment
 // Author: Pascale Vacher
@@ -39,6 +40,7 @@ const char TUNNEL(' ');			// tunnel
 const char WALL('#');    		// border
 const char HOLE('0');			// Character used to represent holes
 const char PILL('*');
+const char ZOMBIE('Z');
 // defining the command letters to move the spot on the maze
 const int  UP(72);				// up arrow
 const int  DOWN(80); 			// down arrow
@@ -83,6 +85,13 @@ struct GameObjectManager
 // TODO Add a difficulty struct with max number of items - Advanced tasks!
 
 
+struct Zombie
+{
+	int x, y;
+	char symbol;
+	bool alive;
+};
+
 // ---------------------------------------------------------------------------
 // ----- run game
 // ---------------------------------------------------------------------------
@@ -93,6 +102,9 @@ int main()
 	void displayEntryScreen(PlayerInfo& playerData);
 	void initialiseGame(GameSpaceManager& gsm, const int numberOfHoles, const int MAXPILLS, GameObjectManager& gom);
 	void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const string& mess);
+	void spawnZombies(char maze[][SIZEX], vector<Zombie> &zombies);
+	void killZombies(vector<Zombie> &zombies);
+	bool allZombiesDead(vector<Zombie> zombies);
 	bool wantsToQuit(const int key);
 	bool isArrowKey(const int k);
 	int  getKeyPress();
@@ -112,12 +124,16 @@ int main()
 	const int numberOfHoles(12);
 	const int MAXPILLS(8);
 
+	// Declaration of Zombies - initial placement is done in 'spawnZombies' function
+	vector<Zombie> zombies = { { 0, 0, ZOMBIE, true },{ 0, 0, ZOMBIE, true },{ 0, 0, ZOMBIE, true },{ 0, 0, ZOMBIE, true } };
+
 	// action...
 	Seed();												// seed the random number generator
 	SetConsoleTitle("Spot and Zombies Game - FoP 2017-18");
 	displayEntryScreen(playerData);
 	Clrscr();											// Using included libraries, clears the game screen - sets it all grey.
 	initialiseGame(gsm, numberOfHoles, MAXPILLS, gom);	// initialise grid (incl. walls and spot)
+	spawnZombies(grid, zombies);		// Initial spawning of zombies
 	paintGame(gsm, playerData, message);				// display game info, modified grid and messages
 	int key;											// current key selected by player
 	do
@@ -126,7 +142,7 @@ int main()
 		if (isArrowKey(key))
 		{
 			updateGameData(gsm.grid, gom, key, message);			// move spot in that direction
-			updateGrid(gsm, gom);									// update grid information
+			updateGrid(gsm, gom, zombies);									// update grid information
 		}
 		else {
 			switch (key) {
@@ -134,7 +150,17 @@ int main()
 				//TODO STUB - Freeze the zombies in place
 				break;
 			case EXTERMINATE:
-				//TODO STUB - Exterminate all zombies on screen, pressing again respawns them back at corners
+				//Exterminate all zombies on screen
+				if (allZombiesDead(zombies))
+				{
+					spawnZombies(grid, zombies);
+				}
+				//If all zombies are already dead, resets them to default spawn locations and respawns them
+				else
+				{
+					killZombies(zombies);
+					updateGrid(grid, maze, spot, numberOfHoles, holes, zombies); //Re-Update grid to apply dead zombies
+				}
 				break;
 			case EAT:
 				//TODO STUB - Eat all pills. Permanently disappear from the board and numremainingpills set to 0;
@@ -143,12 +169,12 @@ int main()
 				break; //Maybe do something here.. put it in for now to simply get rid of the invalid key message before terminating loop on quit command.
 
 			default:
-				message = "INVALID KEY!";			// set 'Invalid key' message
+				message = "INVALID KEY!";	// set 'Invalid key' message
 			}
 		}
-		paintGame(gsm, playerData, message);		// display game info, modified grid and messages
-	} while (!wantsToQuit(key));					// while user does not want to quit
-	endProgram();									// display final message
+		paintGame(grid, message);		// display game info, modified grid and messages
+	} while (!wantsToQuit(key));		// while user does not want to quit
+	endProgram();						// display final message
 	return 0;
 }
 
@@ -157,12 +183,12 @@ int main()
 // ----- initialise game state
 // ---------------------------------------------------------------------------
 
-void initialiseGame(GameSpaceManager& gsm, const int numberOfHoles, const int MAXPILLS, GameObjectManager& gom)
+void initialiseGame(GameSpaceManager& gsm, const int numberOfHoles, const int MAXPILLS, GameObjectManager& gom, vector<Zombie> &zombies)
 {
 	// initialise grid and place spot in middle
 	void setInitialMazeStructure(char maze[][SIZEX]);
 	void setItemInitialCoordinates(Item& item, const char itemSymbol, char[][SIZEX]);
-	void updateGrid(GameSpaceManager& gsm, const GameObjectManager& gom);
+	void updateGrid(GameSpaceManager& gsm, const GameObjectManager& gom, vector<Zombie> zombies);
 	void setMultipleItems(const char itemSymbol, int maxNumOfItems, vector<Item>& itemStore, char maze[][SIZEX]);
 
 	setInitialMazeStructure(gsm.maze);								// initialise maze
@@ -170,7 +196,7 @@ void initialiseGame(GameSpaceManager& gsm, const int numberOfHoles, const int MA
 	setMultipleItems(HOLE, numberOfHoles, gom.holes, gsm.maze);		//Place the holes second
 	setMultipleItems(PILL, MAXPILLS, gom.pills, gsm.maze);			// Place the pills
 	setItemInitialCoordinates(gom.spot, SPOT, gsm.maze);			// Finally place Spot
-	updateGrid(gsm, gom);											// prepare grid
+	updateGrid(gsm, gom, zombies);											// prepare grid
 }
 
 void setItemInitialCoordinates(Item& item, const char itemSymbol, char maze[][SIZEX])
@@ -212,31 +238,94 @@ void setInitialMazeStructure(char maze[][SIZEX])
 			maze[row][col] = (col == 0 || col == SIZEX - 1 || row == 0 || row == SIZEY - 1) ? WALL : TUNNEL;
 }
 
-void setMultipleItems(const char itemSymbol, int maxNumOfItems, vector<Item>& itemStore, char maze[][SIZEX])
-{
-	void placeItem(char g[][SIZEX], const Item& item);
 
-	for (int i = maxNumOfItems; i > 0; --i) {
-		Item i1;
-		setItemInitialCoordinates(i1, itemSymbol, maze);
-		itemStore.push_back(i1);
-		placeItem(maze, i1);
+
+// Zombies alive checking function
+// IN: Vector representing all zombies
+// OUT: Boolean dictating if all zombies are alive. False even if even a single zombie is still alive
+// Precondition: None
+// Postcondition: Identified whether all zombies are dead
+bool allZombiesDead(vector<Zombie> zombies)
+{
+	bool returnVal = true;
+	int i = 0;
+	while (returnVal == true && i < 4)
+	{
+		returnVal = !zombies.at(i).alive;	// Sets returnVal to true if zombie is dead, false and breaks loop if alive
+		i++;
+	}
+	return returnVal;
+}
+
+// Zombies killing cheat function
+// IN: Vector representing all zombies
+// OUT: New form of zombies vector with false .alive values
+// Precondition: None
+// Postcondition: All zombies referenced in function call are killed
+void killZombies(vector<Zombie> &zombies)
+{
+	for (int i = 0; i < 4; i++)
+	{
+		zombies.at(i).alive = false;
 	}
 }
+
+// Zombies default spawning function
+// IN: Array representing the maze, vector representing (and referencing) all zombies
+// OUT: Zombie coordinates reset to defaults, zombies set to be alive
+// Precondition: None
+// Postcondition: All zombies placed in their corners and alive
+void spawnZombies(char maze[][SIZEX], vector<Zombie> &zombies)
+{
+	void placeZombies(char[][SIZEX], vector<Zombie>);
+	//Position defaults
+	int xDef[4] = { 1, 1, 23, 23 };
+	int yDef[4] = { 1, 18, 18, 1 };
+
+	for (int i = 0; i < 4; i++)
+	{
+		zombies.at(i).x = xDef[i];
+		zombies.at(i).y = yDef[i];
+		zombies.at(i).alive = true;
+	}
+	placeZombies(maze, zombies);
+}
+
+// Zombies placement function
+// IN: Array representing the maze, Vector representing all zombies
+// OUT: Relevant zombies placed on relevant coordinates on the grid
+// Precondition: None
+// Postcondition: All zombies that are alive are placed on the grid at coordinates to match their own coordinate values
+void placeZombies(char maze[][SIZEX], vector<Zombie> zombies)
+{
+	void placeItem(char[][SIZEX], Item);
+
+	for (int i = 0; i < 4; i++)
+	{
+		if (zombies.at(i).alive)
+		{
+			Item zombie = { zombies.at(i).x, zombies.at(i).y, zombies.at(i).symbol };
+			placeItem(maze, zombie);
+		}
+	}
+}
+
 
 // ---------------------------------------------------------------------------
 // ----- update grid state
 // ---------------------------------------------------------------------------
 
-void updateGrid(GameSpaceManager& gsm, const GameObjectManager& gom)
+void updateGrid(GameSpaceManager& gsm, const GameObjectManager& gom, vector<Zombie> zombies)
 {
 	// update grid configuration after each move
 	void setMaze(char g[][SIZEX], const char b[][SIZEX]);
 	void placeItem(char g[][SIZEX], const Item& spot);
 	void placeMultipleItems(char g[][SIZEX], const vector<Item>& itemStore);
+	void placeZombies(char g[][SIZEX], vector<Zombie> zombies);
 
 	// Not sent as complete GSM/GOM, to keep constant array restrictions.
 	setMaze(gsm.grid, gsm.maze);					// reset the empty maze configuration into grid 
+	placeZombies(grid, zombies);
 	placeMultipleItems(gsm.grid, gom.holes);		// Place holes on the grid
 	placeMultipleItems(gsm.grid, gom.pills);		// Place pills onto the grid
 	placeItem(gsm.grid, gom.spot);					// set spot in grid
@@ -396,6 +485,25 @@ void showMessage(const WORD backColour, const WORD textColour, int x, int y, con
 	SelectBackColour(backColour);
 	SelectTextColour(textColour);
 	cout << message;
+}
+
+// TODO Nico
+void showGameTitle(int x, int y) {
+	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string message);
+
+	showMessage(clDarkGrey, clYellow, x, y, "--------------------");
+	showMessage(clDarkGrey, clYellow, x, y + 1, "| SPOT AND ZOMBIES |");
+	showMessage(clDarkGrey, clYellow, x, y + 2, "--------------------");
+}
+
+// TODO Nico
+void showGroupMembers(int x, int y) {
+	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string message);
+
+	showMessage(clDarkGrey, clYellow, x, y, "GROUP CS4G1A  -  2017-18");
+	showMessage(clDarkGrey, clYellow, x, y + 1, "Charlie Batten  ");
+	showMessage(clDarkGrey, clYellow, x, y + 2, "Matt Bellamy    26012012");
+	showMessage(clDarkGrey, clYellow, x, y + 3, "Nico Caruana    27022205");
 }
 
 // Display the games title on sequential lines from a set starting point in defined colours.
