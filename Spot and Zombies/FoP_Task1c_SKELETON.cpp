@@ -55,6 +55,7 @@ const char EAT('E');			// Cheat command 3, eat all remaining pills.
 struct Item
 {
 	int x, y;
+	int defaultX, defaultY;		// Mainly used for zombies so they know where to go back to
 	char symbol;
 	bool visible = true;
 	bool alive = true;
@@ -100,9 +101,10 @@ int main()
 	void displayEntryScreen(PlayerInfo& playerData);
 	void initialiseGame(GameSpaceManager& gsm, GameObjectManager& gom, GameData& gameData);
 	void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const GameData& gameData, const string& mess);
-	void spawnZombies(char grid[][SIZEX], vector<Item>& zombies);
 	void killZombies(vector<Item>& zombies);
+	void spawnZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData& data);
 	bool allZombiesDead(vector<Item> zombies);
+	void moveZombies(const char grid[][SIZEX], GameObjectManager& gom, GameData& data);
 	bool wantsToQuit(const int key);
 	bool isArrowKey(const int k);
 	int  getKeyPress();
@@ -143,16 +145,13 @@ int main()
 				break;
 			case EXTERMINATE:
 				gameData.hasCheated = true;
-				//Exterminate all zombies on screen
+				//If all zombies are already dead, resets them to default spawn locations and respawns them
 				if (allZombiesDead(gom.zombies))
 				{
-					// TODO Need a different way of respawning the zombies. Doing it this way temporarily adds them back to screen,
-					// but they are not added as 0-3 in the vector, meaning they disappear next frame.
-					// Probably best to just reflag them alive and reset position manually.
-					//spawnZombies(gsm.grid, gom.zombies);
-					gameData.zombiesLeft = gameData.maxNumberOfZombies;
+					// NOTE: spawnZombies was changed to use existing data for purposes such as this; replaced with setZombies
+					spawnZombies(gsm.grid, gom.zombies, gameData);
 				}
-				//If all zombies are already dead, resets them to default spawn locations and respawns them
+				//Exterminate all zombies on screen
 				else
 				{
 					killZombies(gom.zombies);
@@ -195,11 +194,11 @@ void initialiseGame(GameSpaceManager& gsm, GameObjectManager& gom, GameData& gam
 	void setItemInitialCoordinates(const char itemSymbol, Item& item, char[][SIZEX]);
 	void updateGrid(GameSpaceManager& gsm, GameObjectManager& gom);
 	void setMultipleItems(const char itemSymbol, int maxNumOfItems, vector<Item>& itemStore, char grid[][SIZEX]);
-	void spawnZombies(char grid[][SIZEX], vector<Item>& zombies);
+	void setZombies(char grid[][SIZEX], vector<Item>& zombies, GameData data);
 
 	setInitialMazeStructure(gsm.maze);								// initialise maze
 	setMaze(gsm.grid, gsm.maze);									// Create first empty game frame
-	spawnZombies(gsm.grid, gom.zombies);							// Place zombies first so that nothing spawns over the corners.
+	setZombies(gsm.grid, gom.zombies, gameData);							// Place zombies first so that nothing spawns over the corners.
 	setMultipleItems(HOLE, gameData.numberOfHoles, gom.holes, gsm.grid);		// Place the holes second
 	setMultipleItems(PILL, gameData.maxPills, gom.pills, gsm.grid);			// Place the pills
 	setItemInitialCoordinates(SPOT, gom.spot, gsm.grid);			// Finally place Spot
@@ -289,14 +288,14 @@ void killZombies(vector<Item>& zombies)
 	}
 }
 
-// Zombies default spawning function
+// Zombies default init function
 // IN: Array representing the maze, vector representing (and referencing) all zombies
-// OUT: Zombie coordinates reset to defaults, zombies set to be alive
+// OUT: Zombie coordinates set to defaults, zombies set to be alive
 // Precondition: None
-// Postcondition: All zombies placed in their corners and alive
-void spawnZombies(char grid[][SIZEX], vector<Item>& zombieStore)
+// Postcondition: All zombies placed in their initial corners and alive
+void setZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData data)
 {
-	void placeItem(char g[][SIZEX], const Item& item);
+	void spawnZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData& data);
 
 	//Position defaults
 	int xDef[4] = { 1, 1, SIZEX - 2, SIZEX - 2 };
@@ -305,14 +304,204 @@ void spawnZombies(char grid[][SIZEX], vector<Item>& zombieStore)
 	for (int i = 0; i < 4; i++)
 	{
 		Item z1;
-		z1.x = xDef[i];
-		z1.y = yDef[i];
+		z1.defaultX = xDef[i];
+		z1.defaultY = yDef[i];
 		z1.alive = true;
 		z1.symbol = ZOMBIE;
 		z1.visible = 1;
 		zombieStore.push_back(z1);
-		placeItem(grid, z1);
 	}
+	spawnZombies(grid, zombieStore, data);
+}
+
+// Zombies spawning function
+// IN: Array representing the maze, vector representing (and referencing) all zombies
+// OUT: Zombie coordinates set to defaults, zombies set to be alive
+// Precondition: None
+// Postcondition: All zombies placed in their initial corners and alive
+void spawnZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData& data)
+{
+	void placeItem(char g[][SIZEX], const Item& item);
+
+	for (int i = 0; i < 4; i++)
+	{
+		zombieStore.at(i).x = zombieStore.at(i).defaultX;
+		zombieStore.at(i).y = zombieStore.at(i).defaultY;
+		zombieStore.at(i).alive = true;
+		placeItem(grid, zombieStore.at(i));
+	}
+	data.zombiesLeft = 4;
+}
+
+// Zombies movement function
+// IN: Array representing the maze, GameObjectManager reference, GameData reference
+// OUT:
+// Precondition:
+// Postcondition: Zombie(s) moved towards Spot, and determined to have fallen, bumped or hit Spot and taken necessary action
+void moveZombies(const char grid[][SIZEX], GameObjectManager& gom, GameData& data)
+{
+	void zombiesHitSpot(GameObjectManager& go, GameData& gd);
+	void zombiesBumped(vector<Item>& zombieStore);
+	void zombiesFell(GameObjectManager& go, GameData& gd);
+
+	for (int i = 0; i < 4; i++)
+	{
+		// Only moves if alive
+		if (gom.zombies.at(i).alive)
+		{
+			// Only does all checks if coordinates are not equal
+			if (gom.zombies.at(i).x != gom.spot.x || gom.zombies.at(i).y != gom.spot.y)
+			{
+				// X MOVEMENT
+				// Move towards Spot if Spot X is to lower
+				if (gom.zombies.at(i).x > gom.spot.x)
+				{
+					// 1/4 chance to not move
+					if ((rand() % 4) != 1)
+					{
+						gom.zombies.at(i).x--;
+					}
+				}
+				// Move towards Spot if Spot X is higher
+				else if (gom.zombies.at(i).x < gom.spot.x)
+				{
+					// 1/4 chance to not move
+					if ((rand() % 4) != 1)
+					{
+						gom.zombies.at(i).x++;
+					}
+				}
+
+				// Y MOVEMENT
+				// Move towards Spot if Spot Y is lower
+				if (gom.zombies.at(i).y > gom.spot.y)
+				{
+					// 1/4 chance to not move
+					if ((rand() % 4) != 1)
+					{
+						gom.zombies.at(i).y--;
+					}
+				}
+				// Move towards Spot if Spot Y is higher
+				else if (gom.zombies.at(i).y < gom.spot.y)
+				{
+					// 1/4 chance to not move
+					if ((rand() % 4) != 1)
+					{
+						gom.zombies.at(i).y++;
+					}
+				}
+			}
+		}
+		//Checks if zombies have fallen into holes
+		zombiesFell(gom, data);
+
+		// Checks if zombies have run into spot and causes damage+resets zombie if applicable
+		zombiesHitSpot(gom, data);
+
+		// Checks to see if zombies have bumped into one another through movement and resets their coordinates if necessary
+		zombiesBumped(gom.zombies);
+	}
+}
+
+
+// Zombies falling listener+handler
+// IN: GameObjectManager reference, GameData reference
+// OUT:
+// Precondition:
+// Postcondition: Zombies that have walked onto holes are killed and removed from the grid
+void zombiesFell(GameObjectManager& gom, GameData& data)
+{
+	for (int i = 0; i < 4; i++)
+	{
+		if (gom.zombies.at(i).alive)
+		{
+			bool fallen = false;
+			int j = 0;
+			while (!fallen && j < data.numberOfHoles)
+			{
+				if (gom.zombies.at(i).x == gom.holes.at(j).x && gom.zombies.at(i).y == gom.holes.at(j).y)
+				{
+					fallen = true;
+				}
+				j++;
+			}
+			if (fallen)
+			{
+				gom.zombies.at(i).alive = false;
+				data.zombiesLeft--;
+			}
+		}
+	}
+}
+
+// Zombies hitting Spot listener+handler
+// IN: GameObjectManager reference, GameData reference
+// OUT:
+// Precondition:
+// Postcondition: Zombies that have caught Spot remove 1 life from data and reset to default coordinates
+void zombiesHitSpot(GameObjectManager& gom, GameData& data)
+{
+	void resetZombieCoordinates(Item& zombieS);
+
+	for (int i = 0; i < 4; i++)
+	{
+		if (gom.zombies.at(i).alive)
+		{
+			if (gom.zombies.at(i).x == gom.spot.x && gom.zombies.at(i).y == gom.spot.y)
+			{
+				data.lives--;
+				resetZombieCoordinates(gom.zombies.at(i));
+			}
+		}
+	}
+}
+
+// Zombies bumping listener+handler
+// IN: Item vector representing Zombies
+// OUT:
+// Precondition:
+// Postcondition: Zombies that have walked into each other are sent back to default coordinates
+void zombiesBumped(vector<Item>& zombieStore)
+{
+	void resetZombieCoordinates(Item& zombieS);
+
+	for (int i = 0; i < 4; i++)
+	{
+		// Only checks zombies that are alive
+		if (zombieStore.at(i).alive)
+		{
+			// Loop to identify second zombies
+			for (int j = 0; j < 4; j++)
+			{
+				// Does not check a zombie against itself
+				if (i != j)
+				{
+					// Only compares with live zombies
+					if (zombieStore.at(j).alive)
+					{
+						// If zombie i and zombie j are now on the same square, they are sent back home
+						if ((zombieStore.at(i).x == zombieStore.at(j).x) && (zombieStore.at(i).y == zombieStore.at(j).y))
+						{
+							resetZombieCoordinates(zombieStore.at(i));
+							resetZombieCoordinates(zombieStore.at(j));
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+// Zombies coordinate reset function
+// IN: Item representing the zombie to reset coordinates of
+// OUT:
+// Precondition:
+// Postcondition: Zombie given in parameter is reset to its default coordinates
+void resetZombieCoordinates(Item& zombieStore)
+{
+	zombieStore.x = zombieStore.defaultX;
+	zombieStore.y = zombieStore.defaultY;
 }
 
 // Zombies placement function
@@ -320,15 +509,15 @@ void spawnZombies(char grid[][SIZEX], vector<Item>& zombieStore)
 // OUT: Relevant zombies placed on relevant coordinates on the grid
 // Precondition: None
 // Postcondition: All zombies that are alive are placed on the grid at coordinates to match their own coordinate values
-void placeZombies(char grid[][SIZEX], vector<Item> zombies)
+void placeZombies(char grid[][SIZEX], vector<Item> zombieStore)
 {
 	void placeItem(char g[][SIZEX], const Item& item);
 
 	for (int i = 0; i < 4; i++)
 	{
-		if (zombies.at(i).alive)
+		if (zombieStore.at(i).alive)
 		{
-			placeItem(grid, zombies[i]);
+			placeItem(grid, zombieStore[i]);
 		}
 	}
 }
@@ -348,9 +537,9 @@ void updateGrid(GameSpaceManager& gsm, GameObjectManager& gom)
 
 	// Not sent as complete GSM/GOM, to keep constant array restrictions.
 	setMaze(gsm.grid, gsm.maze);					// reset the empty maze configuration into grid 
-	placeZombies(gsm.grid, gom.zombies);			// place the zombies
 	placeMultipleItems(gsm.grid, gom.holes);		// Place holes on the grid
 	placeMultipleItems(gsm.grid, gom.pills);		// Place pills onto the grid
+	placeZombies(gsm.grid, gom.zombies);			// place the zombies - last so always visible since they're a moving hazard
 	placeItem(gsm.grid, gom.spot);					// set spot in grid
 }
 
@@ -392,10 +581,14 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gam
 	bool isArrowKey(const int k);
 	void setKeyDirection(int k, int& dx, int& dy);
 	void eatPill(GameObjectManager& gom, GameData& gameData);
+	void moveZombies(const char grid[][SIZEX], GameObjectManager& gom, GameData& data);
 	assert(isArrowKey(key));
 
 	// reset message to blank
 	mess = "                                         ";		// reset message to blank
+	
+	// Bool to tell whether or not to move zombies
+	bool zombiesShouldMove = true;
 
 	// calculate direction of movement for given key
 	int dx(0), dy(0);
@@ -411,6 +604,7 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gam
 		break;
 	case WALL:  		// hit a wall and stay there
 		mess = "CANNOT GO THERE!";
+		zombiesShouldMove = false;
 		break;
 	case PILL:
 		gom.spot.x += dx;
@@ -421,9 +615,15 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gam
 		gom.spot.x += dx;
 		gom.spot.y += dy;
 		gameData.lives--;
-		if (gameData.lives <= 0) {
-			//TODO STUB GameOverLose
-		}
+	}
+	if (zombiesShouldMove)
+	{
+		moveZombies(g, gom, gameData);
+	}
+
+	// Moved this to the end so it isn't only called when Spot falls down a hole, to account for zombies draining lives - Matt
+	if (gameData.lives <= 0) {
+		//TODO STUB GameOverLose
 	}
 }
 
