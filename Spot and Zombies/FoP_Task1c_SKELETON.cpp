@@ -14,12 +14,12 @@
 #include <cassert> 
 #include <string>
 #include <sstream>
-#include <time.h>	// For time display
-#include <vector>	// For storing item data 
-#include <fstream>	// For saving/loading files
+#include <time.h>			// For time display
+#include <vector>			// For storing item data 
+#include <fstream>			// For saving/loading files
 
 // include our own libraries
-#include "RandomUtils.h"    // for Seed, Random
+#include "RandomUtils.h"	// for Seed, Random
 #include "ConsoleUtils.h"	// for Clrscr, Gotoxy, etc.
 
 using namespace std;
@@ -171,7 +171,7 @@ int main() {
 		}
 		paintGame(gsm, playerData, gameData, message);		// display game info, modified grid and messages
 	} while ((!wantsToQuit(key)) && (!gameData.gameEnded));	// while user does not want to quit
-	gameOver(playerData, gameData);							//HACK Save highscore data on player quit, if not cheated. Doesn't make sense in game term really... Allows quitting early to manipulate highscore.. but spec does this, so its in for now.
+	gameOver(playerData, gameData);							// HACK Save highscore data on player quit, if not cheated. Doesn't make sense in game terms really... Allows quitting early to manipulate highscore.. but spec does this, so its in for now.
 	endProgram();											// display final message
 	return 0;
 }
@@ -211,7 +211,7 @@ void initialiseGame(GameSpaceManager& gsm, GameObjectManager& gom, GameData& gam
 // OUT:
 // Precondition: SIZEX and SIZEY must be greater than 2.
 // Postcondition: Item is placed on grid in a random position, but not on the edge.
-void setItemInitialCoordinates(const char itemSymbol, Item& item, char grid[][SIZEX]) { 
+void setItemInitialCoordinates(const char itemSymbol, Item& item, char grid[][SIZEX]) {
 	// Function declarations (prototypes)
 	void placeItem(char g[][SIZEX], const Item& item);
 
@@ -306,22 +306,22 @@ void setZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData data) {
 
 // Zombies alive checking function
 // IN: Vector representing all zombies
-// OUT: Boolean dictating if all zombies are alive. False even if even a single zombie is still alive
+// OUT: Boolean dictating if all zombies are dead. False even if even a single zombie is still alive
 // Precondition: None
 // Postcondition: Identified whether all zombies are dead
 bool allZombiesDead(vector<Item> zombies) {
 	assert(true);
 
 	// Local variables
-	bool returnVal = true;
+	bool zombiesDead = true; // Assuming zombies are in dead state initially.
 	int i = 0;
 
 	//Function body
-	while (returnVal == true && i < 4) {
-		returnVal = !zombies.at(i).alive;	// Sets returnVal to true if zombie is dead, false and breaks loop if alive
+	while (zombiesDead && i < 4) {
+		zombiesDead = !zombies.at(i).alive;	// Sets zombiesDead to false and breaks loop if any are alive
 		i++;
 	}
-	return returnVal;
+	return zombiesDead;
 }
 
 // Zombies killing cheat function
@@ -572,6 +572,11 @@ void resetZombieCoordinates(Item& zombieStore) {
 // ----- collision behaviour
 // ---------------------------------------------------------------------------
 
+// Consume pill that spot has collided with.
+// IN: GameObjectManager reference, GameData reference
+// OUT:
+// Precondition:
+// Postcondition: Encountered pill will be removed from the game rendering, player will be granted a life, number of pills on the ui will be decremented.
 void eatPill(GameObjectManager& gom, GameData& gameData) {
 	assert(true);
 
@@ -716,6 +721,7 @@ int getKeyPress() {
 
 bool isArrowKey(const int key) {
 	// check if the key pressed is an arrow key (also accept 'K', 'M', 'H' and 'P')
+	// TODO Why are we being told to accept KMHP here, what are they for? Can't see anything in spec about them.
 	return (key == LEFT) || (key == RIGHT) || (key == UP) || (key == DOWN);
 }
 
@@ -724,11 +730,30 @@ bool wantsToQuit(const int key) {
 	return key == QUIT;
 }
 
-//TODO Nico - Basic function to get username, need to add validity checks and length limits.
-string getUserName() {
-	string playerName;
-	cin >> playerName;
-	return playerName;
+// Get a valid string from user input. 
+// IN: String reference to store the user information in
+// OUT:
+// Precondition:
+// Postcondition: String will be filled with a valid username, or empty string if invalid characters entered.
+void getUserName(string& name) {
+	assert(true);
+
+	// Local variables
+	int maxChars = 20;										// Maximum length of permitted name
+	bool valid = true;										// Flag for name validity, assumed true initially
+
+	// Function body
+	cin >> setw(maxChars) >> name;							// Get input from user, using cin to avoid whitespace characters, setting max length with setw.
+	int i = 0;
+	while (valid && (i < name.length())) {					// Loop while the name is still considered valid, and end of string hasn't been reached.
+		if (!(name.at(i) >= 'A') && (name.at(i) <= 'z')) {	// Check if character is not a valid letter a-z including capitals.
+			valid = false;									// Flag name invalid if invalid character found
+		}
+		++i;												// Increment counter to continue iterating through string.
+	}
+	if (!valid) {											// If an invalid character has been found, reset the string to empty. 
+		name = "";
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -771,8 +796,8 @@ void showGroupMembers(const WORD backColour, const WORD textColour, int x, int y
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
 	showMessage(backColour, textColour, x, y, "GROUP CS4G1A  -  2017-18");
-	showMessage(backColour, textColour, x, y + 1, "Charlie Batten  ");
-	showMessage(backColour, textColour, x, y + 2, "Matt Bellamy    ");
+	showMessage(backColour, textColour, x, y + 1, "Charlie Batten  27012619");
+	showMessage(backColour, textColour, x, y + 2, "Matt Bellamy    26012012");
 	showMessage(backColour, textColour, x, y + 3, "Nico Caruana    27022205");
 }
 
@@ -800,26 +825,57 @@ void displayGameInformation(const GameData& gameData, int x, int y) {
 
 }
 
+void displayControlsMenu(const WORD firstColour, const WORD secondColour, const int x, const int y) {
+	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
+
+	showMessage(firstColour, secondColour, x, y, "TO MOVE USE KEYBOARD ARROWS ");
+	showMessage(firstColour, secondColour, x, y+1, "TO QUIT ENTER 'Q'           ");
+	showMessage(firstColour, secondColour, x, y+3, "CHEATS                        ");
+	showMessage(firstColour, secondColour, x, y+4, "TO FREEZE ZOMBIES PRESS '" + tostring(FREEZE) + "'   ");
+	showMessage(firstColour, secondColour, x, y+5, "TO KILL ALL ZOMBIES PRESS '" + tostring(EXTERMINATE) + "' ");
+	showMessage(firstColour, secondColour, x, y+6, "TO EAT ALL PILLS PRESS '" + tostring(EAT) + "'    ");
+}
+
 // Entry screen display
-void displayEntryScreen(struct PlayerInfo& playerData) {
+void displayEntryScreen(PlayerInfo& playerData) {
 	void showGameTitle(const WORD backColour, const WORD textColour, int x, int y);
 	void showGroupMembers(const WORD backColour, const WORD textColour, int x, int y);
 	void displayTimeAndDate(const WORD firstColour, const WORD secondColour, const int x, const int y);
 	void displayNameRequest(const WORD backColour, const WORD textColour, int x, int y);
-	string getUserName();
+	void getUserName(string& name);
 	void checkAndLoadUserSavedData(const string& userName, PlayerInfo& playerData);
+	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
+	assert(true);
+
+	// Local variables
+	string name = "";
+
+	// Function body
 	showGameTitle(clDarkGrey, clYellow, 10, 6);
 	showGroupMembers(clDarkGrey, clYellow, 10, 10);
 	displayTimeAndDate(clDarkGrey, clYellow, 40, 1);
 	displayNameRequest(clDarkGrey, clYellow, 10, 20);
-	checkAndLoadUserSavedData(getUserName(), playerData);
+	getUserName(name);
+	while (name == ""){
+		SelectBackColour(clBlack); // Doing a full screen refresh here, setting the background colour to black
+		Clrscr();
+		showGameTitle(clDarkGrey, clYellow, 10, 6);
+		showGroupMembers(clDarkGrey, clYellow, 10, 10);
+		displayTimeAndDate(clDarkGrey, clYellow, 40, 1);
+		displayNameRequest(clDarkGrey, clYellow, 10, 20);
+		showMessage(clDarkGrey, clRed, 10, 22, "Invalid entry, name must contain letters only!");
+		displayNameRequest(clDarkGrey, clYellow, 10, 20);
+		getUserName(name);
+	}
+	checkAndLoadUserSavedData(name, playerData);
 }
 
 
 
 void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const GameData& gameData, const string& mess)
 {
+	// Function declarations (prototypes)
 	void displayPlayerInformation(const PlayerInfo& playerData, int x, int y);
 	void displayGameInformation(const GameData& gameData, int x, int y);
 
@@ -829,6 +885,8 @@ void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const 
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 	void paintGrid(const GameSpaceManager& gsm);
 	void displayTimeAndDate(const WORD firstColour, const WORD secondColour, const int x, const int y);
+
+	// Function body
 	// display game title
 	showMessage(clDarkGreen, clGreen, 0, 0, "___SPOT AND ZOMBIES GAME___");
 	showMessage(clYellow, clBlue, 40, 0, "FoP Task 1c: February 2018");
@@ -836,19 +894,11 @@ void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const 
 
 	// print auxiliary messages if any
 	showMessage(clBlack, clYellow, 40, 6, mess);	// display current message
-	// display menu options available
-	showMessage(clRed, clGreen, 40, 8, "TO MOVE USE KEYBOARD ARROWS ");
-	showMessage(clRed, clGreen, 40, 9, "TO QUIT ENTER 'Q'           ");
-	showMessage(clRed, clGreen, 40, 11, "CHEATS                        ");
-	showMessage(clRed, clGreen, 40, 12, "TO FREEZE ZOMBIES PRESS '" + tostring(FREEZE) + "'   ");
-	showMessage(clRed, clGreen, 40, 13, "TO KILL ALL ZOMBIES PRESS '" + tostring(EXTERMINATE) + "' ");
-	showMessage(clRed, clGreen, 40, 14, "TO EAT ALL PILLS PRESS '" + tostring(EAT) + "'    ");
-
+	
+	displayControlsMenu(clRed, clGreen, 40, 8);		// display menu options available
 	displayPlayerInformation(playerData, 40, 16);
-	displayGameInformation(gameData, 40, 19);
-
-	// display grid contents
-	paintGrid(gsm);
+	displayGameInformation(gameData, 40, 19);	
+	paintGrid(gsm);									// display grid contents
 }
 
 void paintGrid(const GameSpaceManager& gsm) {
@@ -887,7 +937,7 @@ void paintGrid(const GameSpaceManager& gsm) {
 
 void endProgram() {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
-	showMessage(clRed, clYellow, 40, 8, "");
+	showMessage(clRed, clYellow, 40, 27, "");
 	system("pause");	// hold output screen until a keyboard key is hit
 }
 
@@ -913,7 +963,7 @@ void gameWon(GameData& gameData) {
 
 	// Function body
 	gameData.gameEnded = true;
-	showMessage(clGrey, clRed, 40, 25, "YOU WIN!");
+	showMessage(clGrey, clRed, 40, 25, "YOU WON WITH " + tostring(gameData.lives) + " LIVES LEFT");
 }
 
 // ---------------------------------------------------------------------------
@@ -941,11 +991,12 @@ void checkAndLoadUserSavedData(const string& userName, PlayerInfo& playerData) {
 void saveUserData(const PlayerInfo& playerData, const int newHighScore) {
 	ofstream fout;
 	fout.open("saves/" + playerData.playerName + ".txt");
-	if (fout.fail()) {
-		//TODO Throw an error
+	if (!fout.fail()) {
+		fout << playerData.playerName << " " << newHighScore;
 	}
 	else {
-		fout << playerData.playerName << " " << newHighScore;
+		//HACK Throw an error- Simple cout for now, ideas for a better way appreciated.
+		cout << "Error saving data! Highscore not recorded!";
 	}
 }
 
@@ -958,7 +1009,7 @@ void saveUserData(const PlayerInfo& playerData, const int newHighScore) {
 // Precondition:
 // Postcondition: Date and time will be displayed on consecutive lines in the specified colours.
 void displayTimeAndDate(const WORD firstColour, const WORD secondColour, const int x, const int y) {
-	void getTime(struct tm &timeLocal);
+	void getTime(tm &timeLocal);
 
 	struct tm timeLocal; // create time structure called timeLocal
 	getTime(timeLocal); //populate structure with values
@@ -982,7 +1033,7 @@ void displayTimeAndDate(const WORD firstColour, const WORD secondColour, const i
 // OUT:
 // Precondition: None
 // Postcondition: Supplied struct will be filled with converted time data.
-void getTime(struct tm &timeLocal) { 
+void getTime(tm &timeLocal) {
 	assert(true);
 
 	// Function body
