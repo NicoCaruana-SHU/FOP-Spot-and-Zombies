@@ -3,6 +3,7 @@
 // Author: Charlie Batten, Matt Bellamy, Nico Caruana
 // ---------------------------------------------------------------------------
 
+#pragma region include libraries
 // ---------------------------------------------------------------------------
 // ----- include libraries
 // ---------------------------------------------------------------------------
@@ -23,7 +24,9 @@
 #include "ConsoleUtils.h"	// for Clrscr, Gotoxy, etc.
 
 using namespace std;
+#pragma endregion 
 
+#pragma region global constants - display icons etc
 // ---------------------------------------------------------------------------
 // ----- define constants
 // ---------------------------------------------------------------------------
@@ -51,6 +54,9 @@ const char FREEZE('F');			// Cheat command 1, to freeze the zombies in place.
 const char EXTERMINATE('X');	// Cheat command 2, eliminate all zombies
 const char EAT('E');			// Cheat command 3, eat all remaining pills.
 
+#pragma endregion
+
+#pragma region struct definitions
 struct Item {
 	int x, y;					// Current position of object on grid.
 	int defaultX, defaultY;		// Mainly used for zombies so they know where to go back to
@@ -85,9 +91,11 @@ struct GameData {					// Default game variable state, can be constructed differe
 	bool hasCheated = false;		// Flag used to determine whether score is recorded at the end of the game.
 	bool zombiesFrozen = false;		// Flag to determine whether zombies can move
 	bool gameEnded = false;
+	int magicProtected = 0; // TODO Nico: temporary magic protection variable
 };
 
 // TODO Add a difficulty struct with max number of items - Advanced tasks!
+#pragma endregion
 
 // ---------------------------------------------------------------------------
 // ----- run game
@@ -498,9 +506,15 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gam
 			gameLost(gameData);
 		}
 	}
-	if ((!gameData.zombiesFrozen) && (playerMoved)) {
-		moveZombies(g, gom, gameData);
+	if (playerMoved) {
+		if (gameData.magicProtected != 0) {
+			gameData.magicProtected--;
+		}
+		if (!gameData.zombiesFrozen) {
+			moveZombies(g, gom, gameData);
+		}
 	}
+
 
 }
 
@@ -521,39 +535,49 @@ void moveZombies(const char grid[][SIZEX], GameObjectManager& gom, GameData& dat
 	for (int i = 0; i < 4; i++) {
 		if (gom.zombies.at(i).alive) { // Only moves if alive			
 			if (gom.zombies.at(i).x != gom.spot.x || gom.zombies.at(i).y != gom.spot.y) { // Only does all checks if coordinates are not equal
-																						  // X MOVEMENT				
-				if (gom.zombies.at(i).x > gom.spot.x) { // Move towards Spot if Spot X is to lower
-														// 1/4 chance to not move
-														//if ((rand() % 4) != 1) {
-					gom.zombies.at(i).x--;
-					//}
-				}
-				else if (gom.zombies.at(i).x < gom.spot.x) { // Move towards Spot if Spot X is higher
-															 // 1/4 chance to not move
-															 //if ((rand() % 4) != 1) {
-					gom.zombies.at(i).x++;
-					//}
-				}
-				// Y MOVEMENT
 
-				if (gom.zombies.at(i).y > gom.spot.y) { // Move towards Spot if Spot Y is lower
-														// 1/4 chance to not move
-														//if ((rand() % 4) != 1) {
-					gom.zombies.at(i).y--;
-					//}
-				}
-				else if (gom.zombies.at(i).y < gom.spot.y) { // Move towards Spot if Spot Y is higher
-															 // 1/4 chance to not move
-															 //if ((rand() % 4) != 1) {
-					gom.zombies.at(i).y++;
-					//}
+				if (data.magicProtected <= 0) { // TODO Nico: Magic protection check! 
+					// X MOVEMENT				
+					if (gom.zombies.at(i).x > gom.spot.x) { // Move towards Spot if Spot X is to lower
+						gom.zombies.at(i).x--;
+					}
+					else if (gom.zombies.at(i).x < gom.spot.x) { // Move towards Spot if Spot X is higher
+						gom.zombies.at(i).x++;
+					}
+					// Y MOVEMENT
+					if (gom.zombies.at(i).y > gom.spot.y) { // Move towards Spot if Spot Y is lower														
+						gom.zombies.at(i).y--;
+					}
+					else if (gom.zombies.at(i).y < gom.spot.y) { // Move towards Spot if Spot Y is higher
+						gom.zombies.at(i).y++;
+					}
+				}// TODO Nico: zombie run away movement
+				else {
+					int zx, zy;
+					if (gom.zombies.at(i).x == gom.spot.x) {
+						zx = 0;
+					}
+					else {
+						zx = (gom.zombies.at(i).x > gom.spot.x) ? 1 : -1;
+					}
+					if (gom.zombies.at(i).y == gom.spot.y) {
+						zy = 0;
+					}
+					else {
+						zy = (gom.zombies.at(i).y > gom.spot.y) ? 1 : -1;
+					}
+					if (grid[gom.zombies.at(i).y + zy][gom.zombies.at(i).x + zx] != WALL) {
+						gom.zombies.at(i).y += zy;
+						gom.zombies.at(i).x += zx;
+					}
+
 				}
 			}
 		}
-		zombiesFell(gom, data);					//Checks if zombies have fallen into holes		
-		zombiesHitSpot(gom, data);				// Checks if zombies have run into spot and causes damage+resets zombie if applicable		
-		zombiesBumped(gom.zombies);				// Checks to see if zombies have bumped into one another through movement and resets their coordinates if necessary
 	}
+	zombiesFell(gom, data);					//Checks if zombies have fallen into holes		
+	zombiesHitSpot(gom, data);				// Checks if zombies have run into spot and causes damage+resets zombie if applicable		
+	zombiesBumped(gom.zombies);				// Checks to see if zombies have bumped into one another through movement and resets their coordinates if necessary
 }
 
 // Zombies coordinate reset function
@@ -587,6 +611,7 @@ void eatPill(GameObjectManager& gom, GameData& gameData) {
 			gom.pills.at(i).visible = false;
 			gameData.lives++;
 			gameData.numberOfPillsLeft--;
+			gameData.magicProtected = 10; // TODO Nico: Magic protection, probably not the best place, but here for now
 		}
 	}
 }
@@ -830,11 +855,11 @@ void displayControlsMenu(const WORD firstColour, const WORD secondColour, const 
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
 	showMessage(firstColour, secondColour, x, y, "TO MOVE USE KEYBOARD ARROWS ");
-	showMessage(firstColour, secondColour, x, y+1, "TO QUIT ENTER 'Q'           ");
-	showMessage(firstColour, secondColour, x, y+3, "CHEATS                        ");
-	showMessage(firstColour, secondColour, x, y+4, "TO FREEZE ZOMBIES PRESS '" + tostring(FREEZE) + "'   ");
-	showMessage(firstColour, secondColour, x, y+5, "TO KILL ALL ZOMBIES PRESS '" + tostring(EXTERMINATE) + "' ");
-	showMessage(firstColour, secondColour, x, y+6, "TO EAT ALL PILLS PRESS '" + tostring(EAT) + "'    ");
+	showMessage(firstColour, secondColour, x, y + 1, "TO QUIT ENTER 'Q'           ");
+	showMessage(firstColour, secondColour, x, y + 3, "CHEATS                        ");
+	showMessage(firstColour, secondColour, x, y + 4, "TO FREEZE ZOMBIES PRESS '" + tostring(FREEZE) + "'   ");
+	showMessage(firstColour, secondColour, x, y + 5, "TO KILL ALL ZOMBIES PRESS '" + tostring(EXTERMINATE) + "' ");
+	showMessage(firstColour, secondColour, x, y + 6, "TO EAT ALL PILLS PRESS '" + tostring(EAT) + "'    ");
 }
 
 // Entry screen display
@@ -858,7 +883,7 @@ void displayEntryScreen(PlayerInfo& playerData) {
 	displayTimeAndDate(clDarkGrey, clYellow, 40, 1);
 	displayNameRequest(clDarkGrey, clYellow, 10, 20);
 	getUserName(name);
-	while (name == ""){
+	while (name == "") {
 		SelectBackColour(clBlack); // Doing a full screen refresh here, setting the background colour to black
 		Clrscr();
 		showGameTitle(clDarkGrey, clYellow, 10, 6);
@@ -895,10 +920,10 @@ void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const 
 
 	// print auxiliary messages if any
 	showMessage(clBlack, clYellow, 40, 6, mess);	// display current message
-	
+
 	displayControlsMenu(clRed, clGreen, 40, 8);		// display menu options available
 	displayPlayerInformation(playerData, 40, 16);
-	displayGameInformation(gameData, 40, 19);	
+	displayGameInformation(gameData, 40, 19);
 	paintGrid(gsm);									// display grid contents
 }
 
@@ -967,6 +992,7 @@ void gameWon(GameData& gameData) {
 	showMessage(clGrey, clRed, 40, 25, "YOU WON WITH " + tostring(gameData.lives) + " LIVES LEFT");
 }
 
+#pragma region data management saving/loading
 // ---------------------------------------------------------------------------
 // ----- data management
 // ---------------------------------------------------------------------------
@@ -996,11 +1022,12 @@ void saveUserData(const PlayerInfo& playerData, const int newHighScore) {
 		fout << playerData.playerName << " " << newHighScore;
 	}
 	else {
-		//HACK Throw an error- Simple cout for now, ideas for a better way appreciated.
+		//HACK Nico: Throw an error- Simple cout for now, ideas for a better way appreciated.
 		cout << "Error saving data! Highscore not recorded!";
 	}
 }
-
+#pragma endregion
+#pragma region time functions
 // ---------------------------------------------------------------------------
 // ----- time functions
 // ---------------------------------------------------------------------------
@@ -1042,3 +1069,4 @@ void getTime(tm &timeLocal) {
 	time(&rawTime); // get raw time data (in seconds from Jan 1 1970) and insert into rawtime variable.
 	localtime_s(&timeLocal, &rawTime); //convert raw time into usable time structure and insert into struct timeLocal
 }
+#pragma endregion
