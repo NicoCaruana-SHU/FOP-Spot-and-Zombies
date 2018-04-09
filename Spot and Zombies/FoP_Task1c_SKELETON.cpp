@@ -108,7 +108,6 @@ int main() {
 	void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gameData, const int key, string& mess);
 	void updateGrid(GameSpaceManager& gsm, GameObjectManager& gom);
 	void gameOver(const PlayerInfo& playerData, const GameData& gameData);
-	void saveUserData(const PlayerInfo& playerData);
 	void endProgram();
 
 	// local variable declarations
