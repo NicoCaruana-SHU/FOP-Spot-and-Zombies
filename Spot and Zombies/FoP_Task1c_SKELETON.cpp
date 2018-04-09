@@ -359,7 +359,6 @@ void spawnZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData& data)
 	data.zombiesLeft = 4;
 }
 
-
 // ---------------------------------------------------------------------------
 // ----- update grid state
 // ---------------------------------------------------------------------------
