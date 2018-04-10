@@ -297,7 +297,6 @@ void setZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData data) {
 		z1.defaultY = yDef[i];
 		z1.active = true;
 		z1.symbol = ZOMBIE;
-		z1.active = 1;
 		zombieStore.push_back(z1);
 	}
 	spawnZombies(grid, zombieStore, data);
