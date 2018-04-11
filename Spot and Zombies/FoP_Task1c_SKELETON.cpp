@@ -481,9 +481,12 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gam
 	switch (g[gom.spot.y + dy][gom.spot.x + dx]) {			// check new target position in grid and update game data (incl. spot coordinates) if move is possible
 		// ...depending on what's on the target position in grid...
 	case ZOMBIE: // HACK Nico: This fixes the zombies blocking movement issues, not seen anything untoward from it yet, but issues may pop up.
+		eatPill(gom, gameData);
 		if (gameData.magicProtected > 0) {
 			spotHitZombies(gom, gameData, dx, dy); //TODO more testing needed on this. possible erratic behaviour
+			mess = "Zombie EATEN!!!";
 		}
+		// TODO Issue where player moves onto space with pill and zombie... pill being ignored.
 	case TUNNEL:		// can move
 		gom.spot.y += dy;	// go in that Y direction
 		gom.spot.x += dx;	// go in that X direction
@@ -509,11 +512,15 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gam
 		}
 	}
 	if (playerMoved) {
-		if (gameData.magicProtected != 0) {
-			gameData.magicProtected--;
-		}
 		if (!gameData.zombiesFrozen) {
 			moveZombies(g, gom, gameData);
+		}
+		if (gameData.magicProtected != 0) {
+			gameData.magicProtected--;
+			cout << '\a'; // TODO beep the alarm
+		}
+		else {
+			// TODO reset spot back to original colour and stop beeping
 		}
 	}
 
@@ -707,17 +714,15 @@ void zombiesBumped(vector<Item>& zombieStore) {
 }
 
 void spotHitZombies(GameObjectManager& gom, GameData& gameData, int dx, int dy) {
-	// Function declarations (prototypes)
-	void resetZombieCoordinates(Item& zombieS);
-	void gameLost(GameData& gameData);
 
 	assert(true);
 
 	// Function body
 	for (int i = 0; i < 4; i++) {
-		if (gom.zombies.at(i).alive) {
+		if (gom.zombies.at(i).active) {
 			if (gom.zombies.at(i).x == gom.spot.x+ dx && gom.zombies.at(i).y == gom.spot.y+dy) {
-				gom.zombies.at(i).alive = false;
+				gom.zombies.at(i).active = false;
+				gameData.zombiesLeft--;
 			}
 		}
 	}
@@ -867,7 +872,7 @@ void displayGameInformation(const GameData& gameData, int x, int y) {
 	showMessage(clDarkGrey, clYellow, x, y, "REMAINING LIVES: " + tostring(gameData.lives));
 	showMessage(clDarkGrey, clYellow, x, y + 1, "ZOMBIES LEFT: " + tostring(gameData.zombiesLeft));
 	showMessage(clDarkGrey, clYellow, x, y + 2, "NUMBER OF PILLS REMAINING: " + tostring(gameData.numberOfPillsLeft));
-
+	showMessage(clDarkGrey, clYellow, x, y + 3, "SuperSpot moves remaining: " + tostring(gameData.magicProtected));
 }
 
 void displayControlsMenu(const WORD firstColour, const WORD secondColour, const int x, const int y) {
