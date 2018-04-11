@@ -469,6 +469,7 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gam
 	void moveZombies(const char grid[][SIZEX], GameObjectManager& gom, GameData& data);
 	void gameLost(GameData& gameData);
 	void gameWon(GameData& gameData);
+	void spotHitZombies(GameObjectManager& gom, GameData& gameData, int dx, int dy);
 
 	assert(isArrowKey(key));
 
@@ -482,6 +483,9 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gam
 	switch (g[gom.spot.y + dy][gom.spot.x + dx]) {			// check new target position in grid and update game data (incl. spot coordinates) if move is possible
 		// ...depending on what's on the target position in grid...
 	case ZOMBIE: // HACK Nico: This fixes the zombies blocking movement issues, not seen anything untoward from it yet, but issues may pop up.
+		if (gameData.magicProtected > 0) {
+			spotHitZombies(gom, gameData, dx, dy); //TODO more testing needed on this. possible erratic behaviour
+		}
 	case TUNNEL:		// can move
 		gom.spot.y += dy;	// go in that Y direction
 		gom.spot.x += dx;	// go in that X direction
@@ -699,6 +703,23 @@ void zombiesBumped(vector<Item>& zombieStore) {
 						}
 					}
 				}
+			}
+		}
+	}
+}
+
+void spotHitZombies(GameObjectManager& gom, GameData& gameData, int dx, int dy) {
+	// Function declarations (prototypes)
+	void resetZombieCoordinates(Item& zombieS);
+	void gameLost(GameData& gameData);
+
+	assert(true);
+
+	// Function body
+	for (int i = 0; i < 4; i++) {
+		if (gom.zombies.at(i).alive) {
+			if (gom.zombies.at(i).x == gom.spot.x+ dx && gom.zombies.at(i).y == gom.spot.y+dy) {
+				gom.zombies.at(i).alive = false;
 			}
 		}
 	}
