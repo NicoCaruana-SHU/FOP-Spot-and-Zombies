@@ -467,7 +467,7 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gam
 	void moveZombies(const char grid[][SIZEX], GameObjectManager& gom, GameData& data);
 	void gameLost(GameData& gameData);
 	void gameWon(GameData& gameData);
-	void spotHitZombies(GameObjectManager& gom, GameData& gameData, int dx, int dy);
+	void spotHitZombies(GameObjectManager& gom, GameData& gameData);
 
 	assert(isArrowKey(key));
 
@@ -485,7 +485,7 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gam
 		gom.spot.x += dx;	// go in that X direction
 		eatPill(gom, gameData);
 		if (gameData.magicProtected > 0) {
-			spotHitZombies(gom, gameData, dx, dy); //TODO more testing needed on this. possible erratic behaviour
+			spotHitZombies(gom, gameData); //TODO more testing needed on this. possible erratic behaviour
 			mess = "Zombie EATEN!!!";
 		}
 		// TODO Issue where player moves onto space with pill and zombie... pill being ignored.
@@ -716,14 +716,14 @@ void zombiesBumped(vector<Item>& zombieStore) {
 	}
 }
 
-void spotHitZombies(GameObjectManager& gom, GameData& gameData, int dx, int dy) {
+void spotHitZombies(GameObjectManager& gom, GameData& gameData) {
 
 	assert(true);
 
 	// Function body
 	for (int i = 0; i < 4; i++) {
 		if (gom.zombies.at(i).active) {
-			if (gom.zombies.at(i).x == gom.spot.x+ dx && gom.zombies.at(i).y == gom.spot.y+dy) {
+			if (gom.zombies.at(i).x == gom.spot.x && gom.zombies.at(i).y == gom.spot.y) {
 				gom.zombies.at(i).active = false;
 				gameData.zombiesLeft--;
 			}
