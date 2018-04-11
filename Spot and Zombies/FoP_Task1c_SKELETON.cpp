@@ -61,8 +61,7 @@ struct Item {
 	int x, y;					// Current position of object on grid.
 	int defaultX, defaultY;		// Mainly used for zombies so they know where to go back to
 	char symbol;				// Symbol used to represent item on grid.
-	bool visible = true;		//TODO Could we merge these two variables?
-	bool alive = true;
+	bool active = true;			// Keeps track of whether item is active (pill eaten, zombie dead etc..)
 };
 
 // Pure data struct for saving player information at the end of the game.
@@ -164,7 +163,7 @@ int main() {
 			case EAT:
 				gameData.hasCheated = true;							// Flag the gamestate as having cheated to prevent high score saving later.
 				for (int i = 0; i < gom.pills.size(); i++) {		// Set all pills visible flag to false so that they no longer get rendered in the game display.
-					gom.pills.at(i).visible = false;
+					gom.pills.at(i).active = false;
 				}
 				gameData.numberOfPillsLeft = 0;						// Player is not rewarded for pills eaten this way, so set pills to zero without changing lives left.
 				message = "CHEAT: EAT!";
@@ -304,9 +303,8 @@ void setZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData data) {
 		Item z1;
 		z1.defaultX = xDef[i];
 		z1.defaultY = yDef[i];
-		z1.alive = true;
+		z1.active = true;
 		z1.symbol = ZOMBIE;
-		z1.visible = 1;
 		zombieStore.push_back(z1);
 	}
 	spawnZombies(grid, zombieStore, data);
@@ -326,7 +324,7 @@ bool allZombiesDead(vector<Item> zombies) {
 
 	//Function body
 	while (zombiesDead && i < 4) {
-		zombiesDead = !zombies.at(i).alive;	// Sets zombiesDead to false and breaks loop if any are alive
+		zombiesDead = !zombies.at(i).active;	// Sets zombiesDead to false and breaks loop if any are alive
 		i++;
 	}
 	return zombiesDead;
@@ -342,7 +340,7 @@ void killZombies(vector<Item>& zombies) {
 
 	// Function body
 	for (int i = 0; i < 4; i++) {
-		zombies.at(i).alive = false;
+		zombies.at(i).active = false;
 	}
 }
 
@@ -361,7 +359,7 @@ void spawnZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData& data)
 	for (int i = 0; i < 4; i++) {
 		zombieStore.at(i).x = zombieStore.at(i).defaultX;
 		zombieStore.at(i).y = zombieStore.at(i).defaultY;
-		zombieStore.at(i).alive = true;
+		zombieStore.at(i).active = true;
 		placeItem(grid, zombieStore.at(i));
 	}
 	data.zombiesLeft = 4;
@@ -417,7 +415,7 @@ void placeItem(char g[][SIZEX], const Item& item) {
 	assert(true);
 
 	// Function body
-	if (item.visible) { // check for visible flag before rendering
+	if (item.active) { // check for visible flag before rendering
 		g[item.y][item.x] = item.symbol;
 	}
 }
@@ -452,7 +450,7 @@ void placeZombies(char grid[][SIZEX], vector<Item> zombieStore) {
 
 	//Function body
 	for (int i = 0; i < 4; i++) {
-		if (zombieStore.at(i).alive) {
+		if (zombieStore.at(i).active) {
 			placeItem(grid, zombieStore[i]);
 		}
 	}
@@ -537,7 +535,7 @@ void moveZombies(const char grid[][SIZEX], GameObjectManager& gom, GameData& dat
 
 	// Function body
 	for (int i = 0; i < 4; i++) {
-		if (gom.zombies.at(i).alive) { // Only moves if alive			
+		if (gom.zombies.at(i).active) { // Only moves if alive			
 			if (gom.zombies.at(i).x != gom.spot.x || gom.zombies.at(i).y != gom.spot.y) { // Only does all checks if coordinates are not equal
 
 				if (data.magicProtected <= 0) { // TODO Nico: Magic protection check! 
@@ -612,7 +610,7 @@ void eatPill(GameObjectManager& gom, GameData& gameData) {
 	// Function body
 	for (int i = 0; i < gom.pills.size(); i++) {
 		if (gom.pills.at(i).x == gom.spot.x && gom.pills.at(i).y == gom.spot.y) {
-			gom.pills.at(i).visible = false;
+			gom.pills.at(i).active = false;
 			gameData.lives++;
 			gameData.numberOfPillsLeft--;
 			gameData.magicProtected = 10; // TODO Nico: Magic protection, probably not the best place, but here for now
@@ -633,7 +631,7 @@ void zombiesFell(GameObjectManager& gom, GameData& gameData) {
 
 	// Function body
 	for (int i = 0; i < 4; i++) {
-		if (gom.zombies.at(i).alive) {
+		if (gom.zombies.at(i).active) {
 			bool fallen = false;
 			int j = 0;
 			while (!fallen && j < gameData.numberOfHoles) {
@@ -643,7 +641,7 @@ void zombiesFell(GameObjectManager& gom, GameData& gameData) {
 				j++;
 			}
 			if (fallen) {
-				gom.zombies.at(i).alive = false;
+				gom.zombies.at(i).active = false;
 				gameData.zombiesLeft--;
 				if ((gameData.zombiesLeft == 0) && (gameData.numberOfPillsLeft == 0)) { // If there are no pills remaining when the last zombie falls into a hole, game is won!;
 					gameWon(gameData);
@@ -667,7 +665,7 @@ void zombiesHitSpot(GameObjectManager& gom, GameData& gameData) {
 
 	// Function body
 	for (int i = 0; i < 4; i++) {
-		if (gom.zombies.at(i).alive) {
+		if (gom.zombies.at(i).active) {
 			if (gom.zombies.at(i).x == gom.spot.x && gom.zombies.at(i).y == gom.spot.y) {
 				gameData.lives--;
 				resetZombieCoordinates(gom.zombies.at(i));
@@ -692,10 +690,10 @@ void zombiesBumped(vector<Item>& zombieStore) {
 
 	// Function body
 	for (int i = 0; i < 4; i++) {
-		if (zombieStore.at(i).alive) {									// Only checks zombies that are alive			
+		if (zombieStore.at(i).active) {									// Only checks zombies that are alive			
 			for (int j = 0; j < 4; j++) {								// Loop to identify second zombies				
 				if (i != j) {											// Does not check a zombie against itself					
-					if (zombieStore.at(j).alive) {						// Only compares with live zombies
+					if (zombieStore.at(j).active) {						// Only compares with live zombies
 																		// If zombie i and zombie j are now on the same square, they are sent back home
 						if ((zombieStore.at(i).x == zombieStore.at(j).x) && (zombieStore.at(i).y == zombieStore.at(j).y)) {
 							resetZombieCoordinates(zombieStore.at(i));
