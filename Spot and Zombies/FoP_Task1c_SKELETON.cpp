@@ -481,12 +481,15 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gam
 	switch (g[gom.spot.y + dy][gom.spot.x + dx]) {			// check new target position in grid and update game data (incl. spot coordinates) if move is possible
 		// ...depending on what's on the target position in grid...
 	case ZOMBIE: // HACK Nico: This fixes the zombies blocking movement issues, not seen anything untoward from it yet, but issues may pop up.
+		gom.spot.y += dy;	// go in that Y direction
+		gom.spot.x += dx;	// go in that X direction
 		eatPill(gom, gameData);
 		if (gameData.magicProtected > 0) {
 			spotHitZombies(gom, gameData, dx, dy); //TODO more testing needed on this. possible erratic behaviour
 			mess = "Zombie EATEN!!!";
 		}
 		// TODO Issue where player moves onto space with pill and zombie... pill being ignored.
+		break;
 	case TUNNEL:		// can move
 		gom.spot.y += dy;	// go in that Y direction
 		gom.spot.x += dx;	// go in that X direction
