@@ -1,3 +1,8 @@
+// TODO Split the key checks up into functions
+// TODO Set item colours into struct referencing item
+// TODO set zombies initial co-ordinates into vector
+// Look at using given time functions .. simplify timed game extension.
+
 // ---------------------------------------------------------------------------
 // Program: Task 1c – group assignment
 // Author: Charlie Batten, Matt Bellamy, Nico Caruana
@@ -130,7 +135,7 @@ int main() {
 			updateGameData(gsm.grid, gom, gameData, key, message);	// move spot in that direction
 			updateGrid(gsm, gom);									// update grid information
 		}
-		else {
+		else { 
 			switch (key) {
 			case FREEZE:
 				gameData.hasCheated = true;							// Flag the gamestate as having cheated to prevent high score saving later.
