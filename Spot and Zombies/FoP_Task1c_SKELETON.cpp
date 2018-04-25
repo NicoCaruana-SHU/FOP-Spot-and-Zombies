@@ -41,6 +41,7 @@ const char WALL('#');
 const char HOLE('0');
 const char PILL('*');
 const char ZOMBIE('Z');
+const char SSJSPOT('G');
 
 // defining the command letters to move the spot on the maze
 const int  UP(72);				// up arrow
@@ -271,7 +272,7 @@ void setZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData data) {
 		z1.defaultLoc.x = xDef[i];
 		z1.defaultLoc.y = yDef[i];
 		z1.symbol = ZOMBIE;
-		resetZombieCoordinates(z1);		
+		resetZombieCoordinates(z1);
 		zombieStore.push_back(z1);
 		placeItem(grid, z1);
 	}
@@ -382,6 +383,8 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gam
 	void moveZombies(const char grid[][SIZEX], GameObjectManager& gom, GameData& data, string& endGameMessage);
 	void gameLost(GameData& gameData, string& endGameMessage);
 	void gameWon(GameData& gameData, string& endGameMessage);
+	void spotHitZombies(GameObjectManager& gom, GameData& gameData, string& endGameMessage);
+	void zombiesHitSpot(GameObjectManager& go, GameData& gd, string& endGameMessage);
 
 	assert(isArrowKey(key));
 
@@ -403,6 +406,20 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gam
 		playerMoved = false;
 		break;
 	case ZOMBIE: // Allow movement onto zombie square, but must also check for pill underlying too.
+		gom.spot.currentLoc.x += dx;
+		gom.spot.currentLoc.y += dy;
+		if (gameData.magicProtected > 0)
+		{
+			spotHitZombies(gom, gameData, endGameMessage);
+		}
+		else {
+			zombiesHitSpot(gom, gameData, endGameMessage);
+		}
+		eatPill(gom, gameData);
+		if ((gameData.numberOfPillsLeft == 0) && (gameData.zombiesLeft == 0)) { // If there are no zombies alive when there are no pills remaining, game is won!;
+			gameWon(gameData, endGameMessage);
+		}
+		break;
 	case PILL:
 		gom.spot.currentLoc.x += dx;
 		gom.spot.currentLoc.y += dy;
@@ -419,18 +436,19 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gam
 			gameLost(gameData, endGameMessage);
 		}
 	}
-	if ((!gameData.gameEnded) && (!gameData.zombiesFrozen) && (playerMoved)) {
-		moveZombies(g, gom, gameData, endGameMessage);
-		if (gameData.magicProtected != 0) {
-			gameData.magicProtected--;
-			cout << '\a'; // TODO beep the alarm
+	if ((!gameData.gameEnded) && (playerMoved)) {
+		if (!gameData.zombiesFrozen)
+		{
+			moveZombies(g, gom, gameData, endGameMessage);
 		}
-		else {
-			// TODO reset spot back to original colour and stop beeping
+		if (gameData.magicProtected > 0) {
+			cout << '\a'; // TODO beep the alarm
+			gameData.magicProtected--;
+			if (gameData.magicProtected == 0) {
+				gom.spot.symbol = SPOT; // TODO reset spot back to original colour and stop beeping
+			}
 		}
 	}
-
-
 }
 
 // Zombies movement function
@@ -444,54 +462,54 @@ void moveZombies(const char grid[][SIZEX], GameObjectManager& gom, GameData& dat
 	void zombiesBumped(vector<Item>& zombieStore);
 	void zombiesFell(GameObjectManager& go, GameData& gd, string& endGameMessage);
 
+
 	assert(true);
 
 	// Function body
 	for (int i = 0; i < 4; i++) {
 		if (gom.zombies.at(i).active) { // Only moves if alive			
-			if (gom.zombies.at(i).x != gom.spot.x || gom.zombies.at(i).y != gom.spot.y) { // Only does all checks if coordinates are not equal
+			if (gom.zombies.at(i).currentLoc.x != gom.spot.currentLoc.x || gom.zombies.at(i).currentLoc.y != gom.spot.currentLoc.y) { // Only does all checks if coordinates are not equal
 
 				if (data.magicProtected <= 0) { // TODO Nico: Magic protection check! 
 					// X MOVEMENT				
-					if (gom.zombies.at(i).x > gom.spot.x) { // Move towards Spot if Spot X is to lower
-						gom.zombies.at(i).x--;
+					if (gom.zombies.at(i).currentLoc.x > gom.spot.currentLoc.x) { // Move towards Spot if Spot X is to lower
+						gom.zombies.at(i).currentLoc.x--;
 					}
-					else if (gom.zombies.at(i).x < gom.spot.x) { // Move towards Spot if Spot X is higher
-						gom.zombies.at(i).x++;
+					else if (gom.zombies.at(i).currentLoc.x < gom.spot.currentLoc.x) { // Move towards Spot if Spot X is higher
+						gom.zombies.at(i).currentLoc.x++;
 					}
 					// Y MOVEMENT
-					if (gom.zombies.at(i).y > gom.spot.y) { // Move towards Spot if Spot Y is lower														
-						gom.zombies.at(i).y--;
+					if (gom.zombies.at(i).currentLoc.y > gom.spot.currentLoc.y) { // Move towards Spot if Spot Y is lower														
+						gom.zombies.at(i).currentLoc.y--;
 					}
-					else if (gom.zombies.at(i).y < gom.spot.y) { // Move towards Spot if Spot Y is higher
-						gom.zombies.at(i).y++;
+					else if (gom.zombies.at(i).currentLoc.y < gom.spot.currentLoc.y) { // Move towards Spot if Spot Y is higher
+						gom.zombies.at(i).currentLoc.y++;
 					}
-				}// TODO Nico: zombie run away movement
-				else {
+				}
+				else { // TODO Nico: zombie run away movement
 					int zx, zy;
-					if (gom.zombies.at(i).x == gom.spot.x) {
+					if (gom.zombies.at(i).currentLoc.x == gom.spot.currentLoc.x) {
 						zx = 0;
 					}
 					else {
-						zx = (gom.zombies.at(i).x > gom.spot.x) ? 1 : -1;
+						zx = (gom.zombies.at(i).currentLoc.x > gom.spot.currentLoc.x) ? 1 : -1;
 					}
-					if (gom.zombies.at(i).y == gom.spot.y) {
+					if (gom.zombies.at(i).currentLoc.y == gom.spot.currentLoc.y) {
 						zy = 0;
 					}
 					else {
-						zy = (gom.zombies.at(i).y > gom.spot.y) ? 1 : -1;
+						zy = (gom.zombies.at(i).currentLoc.y > gom.spot.currentLoc.y) ? 1 : -1;
 					}
-					if (grid[gom.zombies.at(i).y + zy][gom.zombies.at(i).x + zx] != WALL) {
-						gom.zombies.at(i).y += zy;
-						gom.zombies.at(i).x += zx;
+					if (grid[gom.zombies.at(i).currentLoc.y + zy][gom.zombies.at(i).currentLoc.x + zx] != WALL) {
+						gom.zombies.at(i).currentLoc.y += zy;
+						gom.zombies.at(i).currentLoc.x += zx;
 					}
-
 				}
 			}
 		}
 	}
-	zombiesFell(gom, data);					//Checks if zombies have fallen into holes		
-	zombiesHitSpot(gom, data);				// Checks if zombies have run into spot and causes damage+resets zombie if applicable		
+	zombiesFell(gom, data, endGameMessage);					//Checks if zombies have fallen into holes		
+	zombiesHitSpot(gom, data, endGameMessage);				// Checks if zombies have run into spot and causes damage+resets zombie if applicable		
 	zombiesBumped(gom.zombies);				// Checks to see if zombies have bumped into one another through movement and resets their coordinates if necessary
 }
 
@@ -529,6 +547,7 @@ void eatPill(GameObjectManager& gom, GameData& gameData) {
 			gameData.lives++;
 			gameData.numberOfPillsLeft--;
 			gameData.magicProtected = 10; // TODO Nico: Magic protection, probably not the best place, but here for now
+			gom.spot.symbol = SSJSPOT;
 		}
 	}
 }
@@ -538,9 +557,9 @@ void eatPill(GameObjectManager& gom, GameData& gameData) {
 // OUT:
 // Precondition:
 // Postcondition: Zombies that have walked onto holes are killed and removed from the grid
-void zombiesFell(GameObjectManager& gom, GameData& gameData, string& gameEndMessage) {
+void zombiesFell(GameObjectManager& gom, GameData& gameData, string& endGameMessage) {
 	// Function declarations (prototypes)
-	void gameWon(GameData& gameData, string& gameEndMessage);
+	void gameWon(GameData& gameData, string& endGameMessage);
 
 	assert(true);
 
@@ -559,7 +578,7 @@ void zombiesFell(GameObjectManager& gom, GameData& gameData, string& gameEndMess
 				gom.zombies.at(i).active = false;
 				gameData.zombiesLeft--;
 				if ((gameData.zombiesLeft == 0) && (gameData.numberOfPillsLeft == 0)) { // If there are no pills remaining when the last zombie falls into a hole, game is won!;
-					gameWon(gameData, gameEndMessage);
+					gameWon(gameData, endGameMessage);
 				}
 			}
 		}
@@ -621,16 +640,20 @@ void zombiesBumped(vector<Item>& zombieStore) {
 	}
 }
 
-void spotHitZombies(GameObjectManager& gom, GameData& gameData) {
+void spotHitZombies(GameObjectManager& gom, GameData& gameData, string& endGameMessage) {
+	void gameWon(GameData& gameData, string& endGameMessage);
 
 	assert(true);
 
 	// Function body
 	for (int i = 0; i < 4; i++) {
 		if (gom.zombies.at(i).active) {
-			if (gom.zombies.at(i).x == gom.spot.x && gom.zombies.at(i).y == gom.spot.y) {
+			if (gom.zombies.at(i).currentLoc.x == gom.spot.currentLoc.x && gom.zombies.at(i).currentLoc.y == gom.spot.currentLoc.y) {
 				gom.zombies.at(i).active = false;
 				gameData.zombiesLeft--;
+				if ((gameData.zombiesLeft == 0) && (gameData.numberOfPillsLeft == 0)) { // If there are no pills remaining when the last zombie falls into a hole, game is won!;
+					gameWon(gameData, endGameMessage);
+				}
 			}
 		}
 	}
@@ -725,8 +748,8 @@ void commandCheck(int key, string& message, string& endGameMessage, GameSpaceMan
 	case FREEZE:
 		freezeCheat(message, gameData);
 		break;
-	case EXTERMINATE:				
-		exterminateCheat(message,endGameMessage, gameData, gom, gsm);
+	case EXTERMINATE:
+		exterminateCheat(message, endGameMessage, gameData, gom, gsm);
 		break;
 	case EAT:
 		eatPillCheat(message, endGameMessage, gameData, gom.pills, gsm);
@@ -970,8 +993,11 @@ void paintGrid(const GameSpaceManager& gsm) {
 			case SPOT:
 				SelectTextColour(clGreen);
 				break;
-			case PILL:
+			case SSJSPOT:
 				SelectTextColour(clYellow);
+				break;
+			case PILL:
+				SelectTextColour(clMagenta);
 				break;
 			case HOLE:
 				SelectTextColour(clGrey);
