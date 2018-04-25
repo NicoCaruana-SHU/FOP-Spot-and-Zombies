@@ -106,12 +106,12 @@ int main() {
 	// Function declarations (prototypes)
 	void displayEntryScreen(PlayerInfo& playerData);
 	void initialiseGame(GameSpaceManager& gsm, GameObjectManager& gom, GameData& gameData);
-	void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const GameData& gameData, const string& mess);
+	void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const GameData& gameData, const string& mess, const string& endGameMessage);
 	bool wantsToQuit(const int key);
 	int  getKeyPress();
 	bool isArrowKey(const int k);
-	void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gameData, const int key, string& mess);
-	void commandCheck(int key, string& message, GameSpaceManager& gsm, GameObjectManager& gom, GameData& gameData);
+	void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gameData, const int key, string& mess, string& endGameMessage);
+	void commandCheck(int key, string& message, string& endGameMessage, GameSpaceManager& gsm, GameObjectManager& gom, GameData& gameData);
 	void updateGrid(GameSpaceManager& gsm, GameObjectManager& gom);
 	void gameOver(const PlayerInfo& playerData, const GameData& gameData);
 	void endProgram();
@@ -122,24 +122,25 @@ int main() {
 	PlayerInfo playerData;
 	GameData gameData;
 	string message("LET'S START...");								// current message to player
+	string endGameMessage = "";
 
 	// Function body
 	Seed();															// seed the random number generator
 	SetConsoleTitle("Spot and Zombies Game - FoP 2017-18");
 	displayEntryScreen(playerData);
 	initialiseGame(gsm, gom, gameData);								// initialise grid (incl. walls and spot)	
-	paintGame(gsm, playerData, gameData, message);					// display game info, modified grid and messages
+	paintGame(gsm, playerData, gameData, message, endGameMessage);					// display game info, modified grid and messages
 	int key;														// current key selected by player
 	do {
 		key = toupper(getKeyPress()); 								// read in  selected key: arrow or letter command
 		if (isArrowKey(key)) {
-			updateGameData(gsm.grid, gom, gameData, key, message);	// move spot in that direction
+			updateGameData(gsm.grid, gom, gameData, key, message, endGameMessage);	// move spot in that direction
 		}
 		else {
-			commandCheck(key, message, gsm, gom, gameData);
+			commandCheck(key, message, endGameMessage, gsm, gom, gameData);
 		}
 		updateGrid(gsm, gom);										// Re-Update grid to apply changes
-		paintGame(gsm, playerData, gameData, message);				// display game info, modified grid and messages
+		paintGame(gsm, playerData, gameData, message, endGameMessage);				// display game info, modified grid and messages
 	} while ((!wantsToQuit(key)) && (!gameData.gameEnded));			// while user does not want to quit
 	gameOver(playerData, gameData);									// HACK Save highscore data on player quit, if not cheated. Doesn't make sense in game terms really... Allows quitting early to manipulate highscore.. but spec does this, so its in for now.
 	endProgram();													// display final message
@@ -372,14 +373,14 @@ void placeMultipleItems(char g[][SIZEX], const vector<Item>& itemStore) {
 // ---------------------------------------------------------------------------
 // ----- move items on the grid
 // ---------------------------------------------------------------------------
-void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gameData, const int key, string& mess) {
+void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gameData, const int key, string& mess, string& endGameMessage) {
 	// Function declarations (prototypes)
 	bool isArrowKey(const int k);
 	void setKeyDirection(int k, int& dx, int& dy);
 	void eatPill(GameObjectManager& gom, GameData& gameData);
-	void moveZombies(const char grid[][SIZEX], GameObjectManager& gom, GameData& data);
-	void gameLost(GameData& gameData);
-	void gameWon(GameData& gameData);
+	void moveZombies(const char grid[][SIZEX], GameObjectManager& gom, GameData& data, string& endGameMessage);
+	void gameLost(GameData& gameData, string& endGameMessage);
+	void gameWon(GameData& gameData, string& endGameMessage);
 
 	assert(isArrowKey(key));
 
@@ -406,7 +407,7 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gam
 		gom.spot.currentLoc.y += dy;
 		eatPill(gom, gameData);
 		if ((gameData.numberOfPillsLeft == 0) && (gameData.zombiesLeft == 0)) { // If there are no zombies alive when there are no pills remaining, game is won!;
-			gameWon(gameData);
+			gameWon(gameData, endGameMessage);
 		}
 		break;
 	case HOLE:
@@ -414,11 +415,11 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gam
 		gom.spot.currentLoc.y += dy;
 		gameData.lives--;
 		if (gameData.lives <= 0) { // Check to see if player has any lives remaining after they enter a hole.
-			gameLost(gameData);
+			gameLost(gameData, endGameMessage);
 		}
 	}
 	if ((!gameData.gameEnded) && (!gameData.zombiesFrozen) && (playerMoved)) {
-		moveZombies(g, gom, gameData);
+		moveZombies(g, gom, gameData, endGameMessage);
 	}
 
 }
@@ -428,11 +429,11 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gam
 // OUT:
 // Precondition:
 // Postcondition: Zombie(s) moved towards Spot, and determined to have fallen, bumped or hit Spot and taken necessary action
-void moveZombies(const char grid[][SIZEX], GameObjectManager& gom, GameData& data) {
+void moveZombies(const char grid[][SIZEX], GameObjectManager& gom, GameData& data, string& endGameMessage) {
 	// Function declarations (prototypes)
-	void zombiesHitSpot(GameObjectManager& go, GameData& gd);
+	void zombiesHitSpot(GameObjectManager& go, GameData& gd, string& endGameMessage);
 	void zombiesBumped(vector<Item>& zombieStore);
-	void zombiesFell(GameObjectManager& go, GameData& gd);
+	void zombiesFell(GameObjectManager& go, GameData& gd, string& endGameMessage);
 
 	assert(true);
 
@@ -469,8 +470,8 @@ void moveZombies(const char grid[][SIZEX], GameObjectManager& gom, GameData& dat
 				}
 			}
 		}
-		zombiesFell(gom, data);					//Checks if zombies have fallen into holes		
-		zombiesHitSpot(gom, data);				// Checks if zombies have run into spot and causes damage+resets zombie if applicable		
+		zombiesFell(gom, data, endGameMessage);					//Checks if zombies have fallen into holes		
+		zombiesHitSpot(gom, data, endGameMessage);				// Checks if zombies have run into spot and causes damage+resets zombie if applicable		
 		zombiesBumped(gom.zombies);				// Checks to see if zombies have bumped into one another through movement and resets their coordinates if necessary
 	}
 }
@@ -517,9 +518,9 @@ void eatPill(GameObjectManager& gom, GameData& gameData) {
 // OUT:
 // Precondition:
 // Postcondition: Zombies that have walked onto holes are killed and removed from the grid
-void zombiesFell(GameObjectManager& gom, GameData& gameData) {
+void zombiesFell(GameObjectManager& gom, GameData& gameData, string& gameEndMessage) {
 	// Function declarations (prototypes)
-	void gameWon(GameData& gameData);
+	void gameWon(GameData& gameData, string& gameEndMessage);
 
 	assert(true);
 
@@ -538,7 +539,7 @@ void zombiesFell(GameObjectManager& gom, GameData& gameData) {
 				gom.zombies.at(i).active = false;
 				gameData.zombiesLeft--;
 				if ((gameData.zombiesLeft == 0) && (gameData.numberOfPillsLeft == 0)) { // If there are no pills remaining when the last zombie falls into a hole, game is won!;
-					gameWon(gameData);
+					gameWon(gameData, gameEndMessage);
 				}
 			}
 		}
@@ -550,10 +551,10 @@ void zombiesFell(GameObjectManager& gom, GameData& gameData) {
 // OUT:
 // Precondition:
 // Postcondition: Zombies that have caught Spot remove 1 life from data and reset to default coordinates
-void zombiesHitSpot(GameObjectManager& gom, GameData& gameData) {
+void zombiesHitSpot(GameObjectManager& gom, GameData& gameData, string& endGameMessage) {
 	// Function declarations (prototypes)
 	void resetZombieCoordinates(Item& zombieS);
-	void gameLost(GameData& gameData);
+	void gameLost(GameData& gameData, string& endGameMessage);
 
 	assert(true);
 
@@ -564,7 +565,7 @@ void zombiesHitSpot(GameObjectManager& gom, GameData& gameData) {
 				gameData.lives--;
 				resetZombieCoordinates(gom.zombies.at(i));
 				if (gameData.lives <= 0) { // Check to see if player has any lives remaining after spot gets hit by zombie.
-					gameLost(gameData);
+					gameLost(gameData, endGameMessage);
 				}
 			}
 		}
@@ -680,20 +681,20 @@ void getUserName(string& name) {
 	}
 }
 
-void commandCheck(int key, string& message, GameSpaceManager& gsm, GameObjectManager& gom, GameData& gameData) {
+void commandCheck(int key, string& message, string& endGameMessage, GameSpaceManager& gsm, GameObjectManager& gom, GameData& gameData) {
 	void freezeCheat(string& message, GameData& gameData);
-	void exterminateCheat(string& message, GameData& gameData, GameObjectManager& gom, GameSpaceManager& gsm);
-	void eatPillCheat(string& message, GameData& gameData, vector<Item>& pillList, GameSpaceManager& gsm);
+	void exterminateCheat(string& message, string& endGameMessage, GameData& gameData, GameObjectManager& gom, GameSpaceManager& gsm);
+	void eatPillCheat(string& message, string& endGameMessage, GameData& gameData, vector<Item>& pillList, GameSpaceManager& gsm);
 
 	switch (key) {
 	case FREEZE:
 		freezeCheat(message, gameData);
 		break;
 	case EXTERMINATE:				
-		exterminateCheat(message, gameData, gom, gsm);
+		exterminateCheat(message,endGameMessage, gameData, gom, gsm);
 		break;
 	case EAT:
-		eatPillCheat(message, gameData, gom.pills, gsm);
+		eatPillCheat(message, endGameMessage, gameData, gom.pills, gsm);
 		break;
 	case QUIT:
 		message = "GAME STOPPED";
@@ -727,9 +728,9 @@ void freezeCheat(string& message, GameData& gameData) {
 	}
 }
 
-void exterminateCheat(string& message, GameData& gameData, GameObjectManager& gom, GameSpaceManager& gsm) {
+void exterminateCheat(string& message, string& endGameMessage, GameData& gameData, GameObjectManager& gom, GameSpaceManager& gsm) {
 	void deactivateAll(vector<Item>& list);
-	void gameWon(GameData& gameData);
+	void gameWon(GameData& gameData, string& endGameMessage);
 
 	gameData.hasCheated = true;							// Flag the gamestate as having cheated to prevent high score saving later.
 	if (gameData.zombiesTerminated) {					// If used the cheat to kill last time, respawns zombies					
@@ -744,14 +745,14 @@ void exterminateCheat(string& message, GameData& gameData, GameObjectManager& go
 		message = "CHEAT: ZOMBIES KILLED!";
 		if (gameData.numberOfPillsLeft == 0)
 		{
-			gameWon(gameData);
+			gameWon(gameData, endGameMessage);
 		}
 	}
 }
 
-void eatPillCheat(string& message, GameData& gameData, vector<Item>& pillList, GameSpaceManager& gsm) {
+void eatPillCheat(string& message, string& endGameMessage, GameData& gameData, vector<Item>& pillList, GameSpaceManager& gsm) {
 	void deactivateAll(vector<Item>& list);
-	void gameWon(GameData& gameData);
+	void gameWon(GameData& gameData, string& endGameMessage);
 
 	gameData.hasCheated = true;							// Flag the gamestate as having cheated to prevent high score saving later.
 	deactivateAll(pillList);							// Set all pills visible flag to false so that they no longer get rendered in the game display
@@ -759,7 +760,7 @@ void eatPillCheat(string& message, GameData& gameData, vector<Item>& pillList, G
 	message = "CHEAT: EAT!";
 	if (gameData.zombiesLeft == 0)
 	{
-		gameWon(gameData);
+		gameWon(gameData, endGameMessage);
 	}
 }
 #pragma endregion
@@ -880,13 +881,18 @@ void displayEntryScreen(PlayerInfo& playerData) {
 	checkAndLoadUserSavedData(name, playerData);
 }
 
+void displayEndGameMessages(const string& endGameMessage) {
+	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
+	showMessage(clGrey, clRed, 40, 25, endGameMessage);
+}
 
-void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const GameData& gameData, const string& mess)
+void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const GameData& gameData, const string& mess, const string& endGameMessage)
 {
 	// Function declarations (prototypes)
 	void displayPlayerInformation(const PlayerInfo& playerData, int x, int y);
 	void displayGameInformation(const GameData& gameData, int x, int y);
+	void displayEndGameMessages(const string& endGameMessage);
 
 	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
 	// display game title, messages, maze, spot and other items on screen
@@ -911,6 +917,10 @@ void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const 
 	displayControlsMenu(clRed, clGreen, 40, 8);		// display menu options available
 	displayPlayerInformation(playerData, 40, 16);
 	displayGameInformation(gameData, 40, 19);
+	if (gameData.gameEnded)							// If the game has finished, display the win/loss messages
+	{
+		displayEndGameMessages(endGameMessage);
+	}
 	paintGrid(gsm);									// display grid contents
 }
 
@@ -965,20 +975,20 @@ void gameOver(const PlayerInfo& playerData, const GameData& gameData) {
 	}
 }
 
-void gameLost(GameData& gameData) {
+void gameLost(GameData& gameData, string& endGameMessage) {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
 	// Function body
 	gameData.gameEnded = true;
-	showMessage(clGrey, clRed, 40, 25, "NO MORE LIVES, YOU LOSE!");
+	endGameMessage = "NO MORE LIVES, YOU LOSE!";
 }
 
-void gameWon(GameData& gameData) {
+void gameWon(GameData& gameData, string& endGameMessage) {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
 	// Function body
 	gameData.gameEnded = true;
-	showMessage(clGrey, clRed, 40, 25, "YOU WON WITH " + tostring(gameData.lives) + " LIVES LEFT");
+	endGameMessage = "YOU WON WITH " + tostring(gameData.lives) + " LIVES LEFT";
 }
 #pragma endregion
 
