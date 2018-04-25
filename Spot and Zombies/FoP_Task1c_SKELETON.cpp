@@ -104,7 +104,7 @@ struct GameData {					// Default game variable state, can be constructed differe
 
 int main() {
 	// Function declarations (prototypes)
-	void displayEntryScreen(PlayerInfo& playerData);
+	void displayEntryScreen();
 	void initialiseGame(GameSpaceManager& gsm, GameObjectManager& gom, GameData& gameData);
 	void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const GameData& gameData, const string& mess, const string& endGameMessage);
 	bool wantsToQuit(const int key);
@@ -115,6 +115,9 @@ int main() {
 	void updateGrid(GameSpaceManager& gsm, GameObjectManager& gom);
 	void gameOver(const PlayerInfo& playerData, const GameData& gameData);
 	void endProgram();
+	void getUserName(string& name);
+	void checkAndLoadUserSavedData(const string& userName, PlayerInfo& playerData);
+	void displayNameEntryErrorScreen();
 
 	// local variable declarations
 	GameSpaceManager gsm;
@@ -123,11 +126,21 @@ int main() {
 	GameData gameData;
 	string message("LET'S START...");								// current message to player
 	string endGameMessage = "";
+	string name = "";
 
 	// Function body
 	Seed();															// seed the random number generator
 	SetConsoleTitle("Spot and Zombies Game - FoP 2017-18");
-	displayEntryScreen(playerData);
+	displayEntryScreen();
+	do
+	{
+		getUserName(name);
+		if (name == "")
+		{
+			displayNameEntryErrorScreen();
+		}
+	} while (name == "");
+	checkAndLoadUserSavedData(name, playerData);
 	initialiseGame(gsm, gom, gameData);								// initialise grid (incl. walls and spot)	
 	paintGame(gsm, playerData, gameData, message, endGameMessage);					// display game info, modified grid and messages
 	int key;														// current key selected by player
@@ -847,38 +860,31 @@ void displayControlsMenu(const WORD firstColour, const WORD secondColour, const 
 }
 
 // Entry screen display
-void displayEntryScreen(PlayerInfo& playerData) {
+void displayEntryScreen() {
 	void showGameTitle(const WORD backColour, const WORD textColour, int x, int y);
 	void showGroupMembers(const WORD backColour, const WORD textColour, int x, int y);
 	void displayTimeAndDate(const WORD firstColour, const WORD secondColour, const int x, const int y);
 	void displayNameRequest(const WORD backColour, const WORD textColour, int x, int y);
-	void getUserName(string& name);
-	void checkAndLoadUserSavedData(const string& userName, PlayerInfo& playerData);
+
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
 	assert(true);
-
-	// Local variables
-	string name = "";
-
 	// Function body
+
+	SelectBackColour(clGrey); // Doing a full screen refresh here, setting the background colour to grey
+	Clrscr();
 	showGameTitle(clDarkGrey, clYellow, 10, 6);
 	showGroupMembers(clDarkGrey, clYellow, 10, 10);
 	displayTimeAndDate(clDarkGrey, clYellow, 40, 1);
 	displayNameRequest(clDarkGrey, clYellow, 10, 20);
-	getUserName(name);
-	while (name == "") {
-		SelectBackColour(clBlack); // Doing a full screen refresh here, setting the background colour to black
-		Clrscr();
-		showGameTitle(clDarkGrey, clYellow, 10, 6);
-		showGroupMembers(clDarkGrey, clYellow, 10, 10);
-		displayTimeAndDate(clDarkGrey, clYellow, 40, 1);
-		displayNameRequest(clDarkGrey, clYellow, 10, 20);
-		showMessage(clDarkGrey, clRed, 10, 22, "Invalid entry, name must contain letters only!");
-		displayNameRequest(clDarkGrey, clYellow, 10, 20);
-		getUserName(name);
-	}
-	checkAndLoadUserSavedData(name, playerData);
+}
+
+void displayNameEntryErrorScreen() {
+	void displayEntryScreen();
+
+	displayEntryScreen();
+	showMessage(clDarkGrey, clRed, 10, 22, "Invalid entry, name must contain letters only!");
+	displayNameRequest(clDarkGrey, clYellow, 10, 20);
 }
 
 void displayEndGameMessages(const string& endGameMessage) {
