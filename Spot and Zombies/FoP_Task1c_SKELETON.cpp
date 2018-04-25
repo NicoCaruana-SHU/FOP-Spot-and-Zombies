@@ -54,9 +54,13 @@ const char FREEZE('F');			// Cheat command 1, to freeze the zombies in place.
 const char EXTERMINATE('X');	// Cheat command 2, eliminate all zombies
 const char EAT('E');			// Cheat command 3, eat all remaining pills.
 
+struct CoOrd {
+	int x, y;					// grid location
+};
+
 struct Item {
-	int x, y;					// Current position of object on grid.
-	int defaultX, defaultY;		// Mainly used for zombies so they know where to go back to
+	CoOrd defaultLoc;			// Mainly used for zombies so they know where to go back to
+	CoOrd currentLoc;			// Current position of object on grid.	
 	char symbol;				// Symbol used to represent item on grid.
 	bool active = true;			// Keeps track of whether item is active (pill eaten, zombie dead etc..)
 };
@@ -111,7 +115,6 @@ int main() {
 	void updateGrid(GameSpaceManager& gsm, GameObjectManager& gom);
 	void gameOver(const PlayerInfo& playerData, const GameData& gameData);
 	void endProgram();
-
 
 	// local variable declarations
 	GameSpaceManager gsm;
@@ -187,9 +190,9 @@ void setItemInitialCoordinates(const char itemSymbol, Item& item, char grid[][SI
 
 	// Function body
 	do {										// NICO - Replaced the constant recalling itself with a do-while loop - more efficient!
-		item.x = Random(SIZEX - 2);
-		item.y = Random(SIZEY - 2);
-	} while (grid[item.y][item.x] != TUNNEL);
+		item.currentLoc.x = Random(SIZEX - 2);
+		item.currentLoc.y = Random(SIZEY - 2);
+	} while (grid[item.currentLoc.y][item.currentLoc.x] != TUNNEL);
 	item.symbol = itemSymbol;
 	placeItem(grid, item);
 }
@@ -251,7 +254,8 @@ void setInitialMazeStructure(char maze[][SIZEX]) {
 // Postcondition: All zombies placed in their initial corners and alive
 void setZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData data) {
 	// function declarations (prototypes)
-	void spawnZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData& data);
+	void resetZombieCoordinates(Item& zombieStore);
+	void placeItem(char g[][SIZEX], const Item& item);
 
 	assert(true);
 
@@ -262,26 +266,12 @@ void setZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData data) {
 	// Function body
 	for (int i = 0; i < 4; i++) {
 		Item z1;
-		z1.defaultX = xDef[i];
-		z1.defaultY = yDef[i];
-		z1.active = true;
+		z1.defaultLoc.x = xDef[i];
+		z1.defaultLoc.y = yDef[i];
 		z1.symbol = ZOMBIE;
+		resetZombieCoordinates(z1);		
 		zombieStore.push_back(z1);
-	}
-	spawnZombies(grid, zombieStore, data);
-}
-
-// Zombies killing cheat function
-// IN: Vector representing all zombies
-// OUT: New form of zombies vector with false .alive values
-// Precondition: None
-// Postcondition: All zombies referenced in function call are killed
-void killZombies(vector<Item>& zombies) {
-	assert(true);
-
-	// Function body
-	for (int i = 0; i < 4; i++) {
-		zombies.at(i).active = false;
+		placeItem(grid, z1);
 	}
 }
 
@@ -292,16 +282,13 @@ void killZombies(vector<Item>& zombies) {
 // Postcondition: All zombies placed in their initial corners and alive
 void spawnZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData& data) {
 	// Function declarations (prototypes)
-	void placeItem(char g[][SIZEX], const Item& item);
+	void resetZombieCoordinates(Item& zombieStore);
 
 	assert(true);
 
 	// Function body
 	for (int i = 0; i < 4; i++) {
-		zombieStore.at(i).x = zombieStore.at(i).defaultX;
-		zombieStore.at(i).y = zombieStore.at(i).defaultY;
-		zombieStore.at(i).active = true;
-		placeItem(grid, zombieStore.at(i));
+		resetZombieCoordinates(zombieStore.at(i));
 	}
 	data.zombiesLeft = 4;
 }
@@ -320,9 +307,8 @@ void spawnZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData& data)
 void updateGrid(GameSpaceManager& gsm, GameObjectManager& gom) {
 	// Function declarations (prototypes)
 	void setMaze(char g[][SIZEX], const char b[][SIZEX]);
-	void placeItem(char g[][SIZEX], const Item& spot);
 	void placeMultipleItems(char g[][SIZEX], const vector<Item>& itemStore);
-	void placeZombies(char g[][SIZEX], vector<Item> zombies);
+	void placeItem(char g[][SIZEX], const Item& spot);
 
 	assert(true);
 
@@ -331,7 +317,7 @@ void updateGrid(GameSpaceManager& gsm, GameObjectManager& gom) {
 	setMaze(gsm.grid, gsm.maze);					// reset the empty maze configuration into grid 
 	placeMultipleItems(gsm.grid, gom.holes);		// Place holes on the grid
 	placeMultipleItems(gsm.grid, gom.pills);		// Place pills onto the grid
-	placeZombies(gsm.grid, gom.zombies);			// place the zombies - last so always visible since they're a moving hazard
+	placeMultipleItems(gsm.grid, gom.zombies);		// place the zombies - last so always visible since they're a moving hazard
 	placeItem(gsm.grid, gom.spot);					// set spot in grid
 }
 
@@ -359,7 +345,7 @@ void placeItem(char g[][SIZEX], const Item& item) {
 
 	// Function body
 	if (item.active) { // check for visible flag before rendering
-		g[item.y][item.x] = item.symbol;
+		g[item.currentLoc.y][item.currentLoc.x] = item.symbol;
 	}
 }
 
@@ -380,24 +366,6 @@ void placeMultipleItems(char g[][SIZEX], const vector<Item>& itemStore) {
 	}
 }
 
-// Zombies placement function
-// IN: Array representing the grid, Vector representing all zombies
-// OUT: Relevant zombies placed on relevant coordinates on the grid
-// Precondition: None
-// Postcondition: All zombies that are alive are placed on the grid at coordinates to match their own coordinate values
-void placeZombies(char grid[][SIZEX], vector<Item> zombieStore) {
-	// Function declarations (prototypes)
-	void placeItem(char g[][SIZEX], const Item& item);
-
-	assert(true);
-
-	//Function body
-	for (int i = 0; i < 4; i++) {
-		if (zombieStore.at(i).active) {
-			placeItem(grid, zombieStore[i]);
-		}
-	}
-}
 #pragma endregion
 
 // ---------------------------------------------------------------------------
@@ -421,11 +389,11 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gam
 
 	// Function body
 	setKeyDirection(key, dx, dy);							// calculate direction of movement for given key
-	switch (g[gom.spot.y + dy][gom.spot.x + dx]) {			// check new target position in grid and update game data (incl. spot coordinates) if move is possible
+	switch (g[gom.spot.currentLoc.y + dy][gom.spot.currentLoc.x + dx]) {			// check new target position in grid and update game data (incl. spot coordinates) if move is possible
 		// ...depending on what's on the target position in grid...
 	case TUNNEL:		// can move
-		gom.spot.y += dy;	// go in that Y direction
-		gom.spot.x += dx;	// go in that X direction
+		gom.spot.currentLoc.y += dy;	// go in that Y direction
+		gom.spot.currentLoc.x += dx;	// go in that X direction
 		break;
 	case WALL:  		// hit a wall and stay there
 		mess = "CANNOT GO THERE!";
@@ -433,22 +401,22 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gam
 		break;
 	case ZOMBIE: // Allow movement onto zombie square, but must also check for pill underlying too.
 	case PILL:
-		gom.spot.x += dx;
-		gom.spot.y += dy;
+		gom.spot.currentLoc.x += dx;
+		gom.spot.currentLoc.y += dy;
 		eatPill(gom, gameData);
 		if ((gameData.numberOfPillsLeft == 0) && (gameData.zombiesLeft == 0)) { // If there are no zombies alive when there are no pills remaining, game is won!;
 			gameWon(gameData);
 		}
 		break;
 	case HOLE:
-		gom.spot.x += dx;
-		gom.spot.y += dy;
+		gom.spot.currentLoc.x += dx;
+		gom.spot.currentLoc.y += dy;
 		gameData.lives--;
 		if (gameData.lives <= 0) { // Check to see if player has any lives remaining after they enter a hole.
 			gameLost(gameData);
 		}
 	}
-	if ((!gameData.zombiesFrozen) && (playerMoved)) {
+	if ((!gameData.gameEnded) && (!gameData.zombiesFrozen) && (playerMoved)) {
 		moveZombies(g, gom, gameData);
 	}
 
@@ -470,32 +438,32 @@ void moveZombies(const char grid[][SIZEX], GameObjectManager& gom, GameData& dat
 	// Function body
 	for (int i = 0; i < 4; i++) {
 		if (gom.zombies.at(i).active) { // Only moves if alive			
-			if (gom.zombies.at(i).x != gom.spot.x || gom.zombies.at(i).y != gom.spot.y) { // Only does all checks if coordinates are not equal
+			if (gom.zombies.at(i).currentLoc.x != gom.spot.currentLoc.x || gom.zombies.at(i).currentLoc.y != gom.spot.currentLoc.y) { // Only does all checks if coordinates are not equal
 																						  // X MOVEMENT				
-				if (gom.zombies.at(i).x > gom.spot.x) { // Move towards Spot if Spot X is to lower
+				if (gom.zombies.at(i).currentLoc.x > gom.spot.currentLoc.x) { // Move towards Spot if Spot X is to lower
 														// 1/4 chance to not move
 														//if ((rand() % 4) != 1) {
-					gom.zombies.at(i).x--;
+					gom.zombies.at(i).currentLoc.x--;
 					//}
 				}
-				else if (gom.zombies.at(i).x < gom.spot.x) { // Move towards Spot if Spot X is higher
+				else if (gom.zombies.at(i).currentLoc.x < gom.spot.currentLoc.x) { // Move towards Spot if Spot X is higher
 															 // 1/4 chance to not move
 															 //if ((rand() % 4) != 1) {
-					gom.zombies.at(i).x++;
+					gom.zombies.at(i).currentLoc.x++;
 					//}
 				}
 				// Y MOVEMENT
 
-				if (gom.zombies.at(i).y > gom.spot.y) { // Move towards Spot if Spot Y is lower
+				if (gom.zombies.at(i).currentLoc.y > gom.spot.currentLoc.y) { // Move towards Spot if Spot Y is lower
 														// 1/4 chance to not move
 														//if ((rand() % 4) != 1) {
-					gom.zombies.at(i).y--;
+					gom.zombies.at(i).currentLoc.y--;
 					//}
 				}
-				else if (gom.zombies.at(i).y < gom.spot.y) { // Move towards Spot if Spot Y is higher
+				else if (gom.zombies.at(i).currentLoc.y < gom.spot.currentLoc.y) { // Move towards Spot if Spot Y is higher
 															 // 1/4 chance to not move
 															 //if ((rand() % 4) != 1) {
-					gom.zombies.at(i).y++;
+					gom.zombies.at(i).currentLoc.y++;
 					//}
 				}
 			}
@@ -510,13 +478,13 @@ void moveZombies(const char grid[][SIZEX], GameObjectManager& gom, GameData& dat
 // IN: Item representing the zombie to reset coordinates of
 // OUT:
 // Precondition:
-// Postcondition: Zombie given in parameter is reset to its default coordinates
+// Postcondition: Zombie given in parameter is reset to its default coordinates and set active.
 void resetZombieCoordinates(Item& zombieStore) {
 	assert(true);
 
 	// Function body
-	zombieStore.x = zombieStore.defaultX;
-	zombieStore.y = zombieStore.defaultY;
+	zombieStore.currentLoc = zombieStore.defaultLoc;
+	zombieStore.active = true;
 }
 
 // ---------------------------------------------------------------------------
@@ -533,7 +501,7 @@ void eatPill(GameObjectManager& gom, GameData& gameData) {
 
 	// Function body
 	for (int i = 0; i < gom.pills.size(); i++) {
-		if (gom.pills.at(i).x == gom.spot.x && gom.pills.at(i).y == gom.spot.y) {
+		if (gom.pills.at(i).currentLoc.x == gom.spot.currentLoc.x && gom.pills.at(i).currentLoc.y == gom.spot.currentLoc.y) {
 			gom.pills.at(i).active = false;
 			gameData.lives++;
 			gameData.numberOfPillsLeft--;
@@ -558,7 +526,7 @@ void zombiesFell(GameObjectManager& gom, GameData& gameData) {
 			bool fallen = false;
 			int j = 0;
 			while (!fallen && j < gameData.numberOfHoles) {
-				if (gom.zombies.at(i).x == gom.holes.at(j).x && gom.zombies.at(i).y == gom.holes.at(j).y) {
+				if (gom.zombies.at(i).currentLoc.x == gom.holes.at(j).currentLoc.x && gom.zombies.at(i).currentLoc.y == gom.holes.at(j).currentLoc.y) {
 					fallen = true;
 				}
 				j++;
@@ -589,7 +557,7 @@ void zombiesHitSpot(GameObjectManager& gom, GameData& gameData) {
 	// Function body
 	for (int i = 0; i < 4; i++) {
 		if (gom.zombies.at(i).active) {
-			if (gom.zombies.at(i).x == gom.spot.x && gom.zombies.at(i).y == gom.spot.y) {
+			if (gom.zombies.at(i).currentLoc.x == gom.spot.currentLoc.x && gom.zombies.at(i).currentLoc.y == gom.spot.currentLoc.y) {
 				gameData.lives--;
 				resetZombieCoordinates(gom.zombies.at(i));
 				if (gameData.lives <= 0) { // Check to see if player has any lives remaining after spot gets hit by zombie.
@@ -618,7 +586,7 @@ void zombiesBumped(vector<Item>& zombieStore) {
 				if (i != j) {											// Does not check a zombie against itself					
 					if (zombieStore.at(j).active) {						// Only compares with live zombies
 																		// If zombie i and zombie j are now on the same square, they are sent back home
-						if ((zombieStore.at(i).x == zombieStore.at(j).x) && (zombieStore.at(i).y == zombieStore.at(j).y)) {
+						if ((zombieStore.at(i).currentLoc.x == zombieStore.at(j).currentLoc.x) && (zombieStore.at(i).currentLoc.y == zombieStore.at(j).currentLoc.y)) {
 							resetZombieCoordinates(zombieStore.at(i));
 							resetZombieCoordinates(zombieStore.at(j));
 						}
@@ -708,39 +676,19 @@ void getUserName(string& name) {
 }
 
 void commandCheck(int key, string& message, GameSpaceManager& gsm, GameObjectManager& gom, GameData& gameData) {
-	void freezeCheat(string& message, GameData gameData);
-	void spawnZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData& data);
-	void gameWon(GameData& gameData);
+	void freezeCheat(string& message, GameData& gameData);
+	void exterminateCheat(string& message, GameData& gameData, GameObjectManager& gom, GameSpaceManager& gsm);
+	void eatPillCheat(string& message, GameData& gameData, vector<Item>& pillList, GameSpaceManager& gsm);
 
 	switch (key) {
 	case FREEZE:
 		freezeCheat(message, gameData);
 		break;
-	case EXTERMINATE: // TODO Cheat in basic version kills zombies on first press regardless of amount left. Will need to tweak this to follow suit.				
-		gameData.hasCheated = true;							// Flag the gamestate as having cheated to prevent high score saving later.
-		if (allZombiesDead(gom.zombies)) {					// If all zombies are already dead, resets them to default spawn locations and respawns them					
-			spawnZombies(gsm.grid, gom.zombies, gameData);	// NOTE: spawnZombies was changed to use existing data for purposes such as this; replaced with setZombies
-		}
-		else {												// Exterminate all zombies on screen
-			killZombies(gom.zombies);
-			gameData.zombiesLeft = 0;
-			if (gameData.numberOfPillsLeft == 0)
-			{
-				gameWon(gameData);
-			}
-		}
+	case EXTERMINATE:				
+		exterminateCheat(message, gameData, gom, gsm);
 		break;
 	case EAT:
-		gameData.hasCheated = true;							// Flag the gamestate as having cheated to prevent high score saving later.
-		for (int i = 0; i < gom.pills.size(); i++) {		// Set all pills visible flag to false so that they no longer get rendered in the game display.
-			gom.pills.at(i).active = false;
-		}
-		gameData.numberOfPillsLeft = 0;						// Player is not rewarded for pills eaten this way, so set pills to zero without changing lives left.
-		message = "CHEAT: EAT!";
-		if (gameData.zombiesLeft == 0)
-		{
-			gameWon(gameData);
-		}
+		eatPillCheat(message, gameData, gom.pills, gsm);
 		break;
 	case QUIT:
 		message = "GAME STOPPED";
@@ -755,7 +703,14 @@ void commandCheck(int key, string& message, GameSpaceManager& gsm, GameObjectMan
 // ----- cheat actions
 // ---------------------------------------------------------------------------
 
-void freezeCheat(string& message, GameData gameData) {
+void deactivateAll(vector<Item>& list) {
+	for (int i = 0; i < list.size(); i++)
+	{
+		list.at(i).active = false;
+	}
+}
+
+void freezeCheat(string& message, GameData& gameData) {
 	gameData.hasCheated = true;							// Flag the gamestate as having cheated to prevent high score saving later.
 	gameData.zombiesFrozen = !gameData.zombiesFrozen;	// Toggle value on each keypress. Boolean later checked to allow zombies to move.
 	if (gameData.zombiesFrozen) {
@@ -766,7 +721,10 @@ void freezeCheat(string& message, GameData gameData) {
 	}
 }
 
-void exterminateCheat() {
+void exterminateCheat(string& message, GameData& gameData, GameObjectManager& gom, GameSpaceManager& gsm) {
+	void deactivateAll(vector<Item>& list);
+	void gameWon(GameData& gameData);
+
 	gameData.hasCheated = true;							// Flag the gamestate as having cheated to prevent high score saving later.
 	if (gameData.zombiesTerminated) {					// If used the cheat to kill last time, respawns zombies					
 		spawnZombies(gsm.grid, gom.zombies, gameData);	// NOTE: spawnZombies was changed to use existing data for purposes such as this; replaced with setZombies
@@ -774,17 +732,30 @@ void exterminateCheat() {
 		message = "CHEAT: ZOMBIES SPAWNED!";
 	}
 	else {												// Exterminate all zombies on screen
-		killZombies(gom.zombies);
+		deactivateAll(gom.zombies);
 		gameData.zombiesLeft = 0;
 		gameData.zombiesTerminated = true;
+		message = "CHEAT: ZOMBIES KILLED!";
 		if (gameData.numberOfPillsLeft == 0)
 		{
 			gameWon(gameData);
 		}
-		message = "CHEAT: ZOMBIES KILLED!";
 	}
 }
 
+void eatPillCheat(string& message, GameData& gameData, vector<Item>& pillList, GameSpaceManager& gsm) {
+	void deactivateAll(vector<Item>& list);
+	void gameWon(GameData& gameData);
+
+	gameData.hasCheated = true;							// Flag the gamestate as having cheated to prevent high score saving later.
+	deactivateAll(pillList);							// Set all pills visible flag to false so that they no longer get rendered in the game display
+	gameData.numberOfPillsLeft = 0;						// Player is not rewarded for pills eaten this way, so set pills to zero without changing lives left.
+	message = "CHEAT: EAT!";
+	if (gameData.zombiesLeft == 0)
+	{
+		gameWon(gameData);
+	}
+}
 #pragma endregion
 
 #pragma region display info on screen
@@ -1041,6 +1012,7 @@ void saveUserData(const PlayerInfo& playerData, const int newHighScore) {
 }
 #pragma endregion
 
+#pragma region time functions
 // ---------------------------------------------------------------------------
 // ----- time functions
 // ---------------------------------------------------------------------------
@@ -1082,3 +1054,4 @@ void getTime(tm &timeLocal) {
 	time(&rawTime); // get raw time data (in seconds from Jan 1 1970) and insert into rawtime variable.
 	localtime_s(&timeLocal, &rawTime); //convert raw time into usable time structure and insert into struct timeLocal
 }
+#pragma endregion
