@@ -83,6 +83,7 @@ struct GameData {					// Default game variable state, can be constructed differe
 	int zombiesLeft = maxNumberOfZombies;
 	bool hasCheated = false;		// Flag used to determine whether score is recorded at the end of the game.
 	bool zombiesFrozen = false;		// Flag to determine whether zombies can move
+	bool zombiesTerminated = false;
 	bool gameEnded = false;
 };
 
@@ -99,7 +100,6 @@ int main() {
 	void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const GameData& gameData, const string& mess);
 	void killZombies(vector<Item>& zombies);
 	void spawnZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData& data);
-	bool allZombiesDead(vector<Item> zombies);
 	void moveZombies(const char grid[][SIZEX], GameObjectManager& gom, GameData& data);
 	bool wantsToQuit(const int key);
 	bool isArrowKey(const int k);
@@ -143,18 +143,22 @@ int main() {
 					message = "CHEAT: ZOMBIES UNFROZEN!";
 				}
 				break;
-			case EXTERMINATE: // TODO Cheat in basic version kills zombies on first press regardless of amount left. Will need to tweak this to follow suit.				
+			case EXTERMINATE:			
 				gameData.hasCheated = true;							// Flag the gamestate as having cheated to prevent high score saving later.
-				if (allZombiesDead(gom.zombies)) {					// If all zombies are already dead, resets them to default spawn locations and respawns them					
+				if (gameData.zombiesTerminated) {					// If used the cheat to kill last time, respawns zombies					
 					spawnZombies(gsm.grid, gom.zombies, gameData);	// NOTE: spawnZombies was changed to use existing data for purposes such as this; replaced with setZombies
+					gameData.zombiesTerminated = false;
+					message = "CHEAT: ZOMBIES SPAWNED!";
 				}
 				else {												// Exterminate all zombies on screen
 					killZombies(gom.zombies);
 					gameData.zombiesLeft = 0;
+					gameData.zombiesTerminated = true;
 					if (gameData.numberOfPillsLeft == 0)
 					{
 						gameWon(gameData);
 					}
+					message = "CHEAT: ZOMBIES KILLED!";
 				}
 				break;
 			case EAT:
@@ -309,26 +313,6 @@ void setZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData data) {
 		zombieStore.push_back(z1);
 	}
 	spawnZombies(grid, zombieStore, data);
-}
-
-// Zombies alive checking function
-// IN: Vector representing all zombies
-// OUT: Boolean dictating if all zombies are dead. False even if even a single zombie is still alive
-// Precondition: None
-// Postcondition: Identified whether all zombies are dead
-bool allZombiesDead(vector<Item> zombies) {
-	assert(true);
-
-	// Local variables
-	bool zombiesDead = true; // Assuming zombies are in dead state initially.
-	int i = 0;
-
-	//Function body
-	while (zombiesDead && i < 4) {
-		zombiesDead = !zombies.at(i).active;	// Sets zombiesDead to false and breaks loop if any are alive
-		i++;
-	}
-	return zombiesDead;
 }
 
 // Zombies killing cheat function
