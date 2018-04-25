@@ -108,6 +108,7 @@ int main() {
 	void updateGrid(GameSpaceManager& gsm, GameObjectManager& gom);
 	void gameOver(const PlayerInfo& playerData, const GameData& gameData);
 	void endProgram();
+	void gameWon(GameData& gameData);
 
 	// local variable declarations
 	GameSpaceManager gsm;
@@ -150,6 +151,10 @@ int main() {
 				else {												// Exterminate all zombies on screen
 					killZombies(gom.zombies);
 					gameData.zombiesLeft = 0;
+					if (gameData.numberOfPillsLeft == 0)
+					{
+						gameWon(gameData);
+					}
 				}
 				break;
 			case EAT:
@@ -159,6 +164,10 @@ int main() {
 				}
 				gameData.numberOfPillsLeft = 0;						// Player is not rewarded for pills eaten this way, so set pills to zero without changing lives left.
 				message = "CHEAT: EAT!";
+				if (gameData.zombiesLeft == 0)
+				{
+					gameWon(gameData);
+				}
 				break;
 			case QUIT:
 				message = "GAME STOPPED";
