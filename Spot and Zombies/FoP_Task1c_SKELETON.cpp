@@ -86,6 +86,7 @@ struct GameData {					// Default game variable state, can be constructed differe
 	int zombiesLeft = maxNumberOfZombies;
 	bool hasCheated = false;		// Flag used to determine whether score is recorded at the end of the game.
 	bool zombiesFrozen = false;		// Flag to determine whether zombies can move
+	bool zombiesTerminated = false;
 	bool gameEnded = false;
 };
 
@@ -268,26 +269,6 @@ void setZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData data) {
 		zombieStore.push_back(z1);
 	}
 	spawnZombies(grid, zombieStore, data);
-}
-
-// Zombies alive checking function
-// IN: Vector representing all zombies
-// OUT: Boolean dictating if all zombies are dead. False even if even a single zombie is still alive
-// Precondition: None
-// Postcondition: Identified whether all zombies are dead
-bool allZombiesDead(vector<Item> zombies) {
-	assert(true);
-
-	// Local variables
-	bool zombiesDead = true; // Assuming zombies are in dead state initially.
-	int i = 0;
-
-	//Function body
-	while (zombiesDead && i < 4) {
-		zombiesDead = !zombies.at(i).active;	// Sets zombiesDead to false and breaks loop if any are alive
-		i++;
-	}
-	return zombiesDead;
 }
 
 // Zombies killing cheat function
@@ -786,7 +767,22 @@ void freezeCheat(string& message, GameData gameData) {
 }
 
 void exterminateCheat() {
-
+	gameData.hasCheated = true;							// Flag the gamestate as having cheated to prevent high score saving later.
+	if (gameData.zombiesTerminated) {					// If used the cheat to kill last time, respawns zombies					
+		spawnZombies(gsm.grid, gom.zombies, gameData);	// NOTE: spawnZombies was changed to use existing data for purposes such as this; replaced with setZombies
+		gameData.zombiesTerminated = false;
+		message = "CHEAT: ZOMBIES SPAWNED!";
+	}
+	else {												// Exterminate all zombies on screen
+		killZombies(gom.zombies);
+		gameData.zombiesLeft = 0;
+		gameData.zombiesTerminated = true;
+		if (gameData.numberOfPillsLeft == 0)
+		{
+			gameWon(gameData);
+		}
+		message = "CHEAT: ZOMBIES KILLED!";
+	}
 }
 
 #pragma endregion
