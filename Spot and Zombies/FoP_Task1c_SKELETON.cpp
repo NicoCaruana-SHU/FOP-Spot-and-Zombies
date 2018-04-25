@@ -121,29 +121,29 @@ int main() {
 	GameObjectManager gom;
 	PlayerInfo playerData;
 	GameData gameData;
-	string message("LET'S START...");								// current message to player
+	string message("LET'S START...");												// current message to player
 	string endGameMessage = "";
 
 	// Function body
-	Seed();															// seed the random number generator
+	Seed();																			// seed the random number generator
 	SetConsoleTitle("Spot and Zombies Game - FoP 2017-18");
 	displayEntryScreen(playerData);
-	initialiseGame(gsm, gom, gameData);								// initialise grid (incl. walls and spot)	
+	initialiseGame(gsm, gom, gameData);												// initialise grid (incl. walls and spot)	
 	paintGame(gsm, playerData, gameData, message, endGameMessage);					// display game info, modified grid and messages
-	int key;														// current key selected by player
+	int key;																		// current key selected by player
 	do {
-		key = toupper(getKeyPress()); 								// read in  selected key: arrow or letter command
+		key = toupper(getKeyPress()); 												// read in  selected key: arrow or letter command
 		if (isArrowKey(key)) {
 			updateGameData(gsm.grid, gom, gameData, key, message, endGameMessage);	// move spot in that direction
 		}
 		else {
 			commandCheck(key, message, endGameMessage, gsm, gom, gameData);
 		}
-		updateGrid(gsm, gom);										// Re-Update grid to apply changes
+		updateGrid(gsm, gom);														// Re-Update grid to apply changes
 		paintGame(gsm, playerData, gameData, message, endGameMessage);				// display game info, modified grid and messages
-	} while ((!wantsToQuit(key)) && (!gameData.gameEnded));			// while user does not want to quit
-	gameOver(playerData, gameData);									// HACK Save highscore data on player quit, if not cheated. Doesn't make sense in game terms really... Allows quitting early to manipulate highscore.. but spec does this, so its in for now.
-	endProgram();													// display final message
+	} while ((!wantsToQuit(key)) && (!gameData.gameEnded));							// while user does not want to quit
+	gameOver(playerData, gameData);													// HACK Save highscore data on player quit, if not cheated. Doesn't make sense in game terms really... Allows quitting early to manipulate highscore.. but spec does this, so its in for now.
+	endProgram();																	// display final message
 	return 0;
 }
 #pragma endregion
