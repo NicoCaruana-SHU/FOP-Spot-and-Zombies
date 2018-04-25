@@ -82,21 +82,30 @@ struct GameObjectManager {
 	Item spot;
 };
 
+struct Difficulty {
+	string levelName;
+	int maxNumberOfHoles;
+	int maxLives;
+	int maxPills;
+	int maxNumberOfZombies;
+	int lengthOfMagicProtection;
+};
 struct GameData {					// Default game variable state, can be constructed differently for difficulties later.
-	int lives = 3;					// Represents lives remaining in game. Set to 3 initially to match basic version.
-	int numberOfHoles = 12;
-	int maxPills = 8;
-	int maxNumberOfZombies = 4;
-	int numberOfPillsLeft = maxPills;
-	int zombiesLeft = maxNumberOfZombies;
+	Difficulty currentLevel;
+	int lives;						// Represents lives remaining in game. Set to 3 initially to match basic version.
+	int numberOfPillsLeft;
+	int zombiesLeft;
+	int magicProtected = 0;			// Track length of current magic protection
 	bool hasCheated = false;		// Flag used to determine whether score is recorded at the end of the game.
 	bool zombiesFrozen = false;		// Flag to determine whether zombies can move
 	bool zombiesTerminated = false;
 	bool gameEnded = false;
-	int magicProtected = 0; // TODO Nico: temporary magic protection variable
 };
 
-// TODO Add a difficulty struct with max number of items - Advanced tasks!
+Difficulty easy{ "EASY", 12, 8, 8, 4, 10 };
+Difficulty normal{ "NORMAL", 5, 5, 5, 4, 8 };
+Difficulty hard{ "HARD", 2, 3, 2, 4, 5 };
+
 #pragma endregion
 
 #pragma region run game
@@ -106,7 +115,7 @@ struct GameData {					// Default game variable state, can be constructed differe
 
 int main() {
 	// Function declarations (prototypes)
-	void displayEntryScreen(PlayerInfo& playerData);
+	void displayEntryScreen();
 	void initialiseGame(GameSpaceManager& gsm, GameObjectManager& gom, GameData& gameData);
 	void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const GameData& gameData, const string& mess, const string& endGameMessage);
 	bool wantsToQuit(const int key);
@@ -118,6 +127,11 @@ int main() {
 	void gameOver(const PlayerInfo& playerData, const GameData& gameData);
 	void endProgram();
 
+	void getUserName(string& name);
+	void checkAndLoadUserSavedData(const string& userName, PlayerInfo& playerData);
+	void initialiseDifficultyVariables(GameData& gameData);
+	void displayNameEntryErrorScreen();
+
 	// local variable declarations
 	GameSpaceManager gsm;
 	GameObjectManager gom;
@@ -125,11 +139,25 @@ int main() {
 	GameData gameData;
 	string message("LET'S START...");												// current message to player
 	string endGameMessage = "";
+	string name = "";
+
+	gameData.currentLevel = hard;
+	initialiseDifficultyVariables(gameData);
 
 	// Function body
 	Seed();																			// seed the random number generator
 	SetConsoleTitle("Spot and Zombies Game - FoP 2017-18");
-	displayEntryScreen(playerData);
+	displayEntryScreen();
+	do
+	{
+		getUserName(name);
+		if (name == "")
+		{
+			displayNameEntryErrorScreen();
+		}
+	} while (name == "");
+	checkAndLoadUserSavedData(name, playerData);
+
 	initialiseGame(gsm, gom, gameData);												// initialise grid (incl. walls and spot)	
 	paintGame(gsm, playerData, gameData, message, endGameMessage);					// display game info, modified grid and messages
 	int key;																		// current key selected by player
@@ -155,6 +183,14 @@ int main() {
 // ----- initialise game state
 // ---------------------------------------------------------------------------
 
+
+void initialiseDifficultyVariables(GameData& gameData) {
+	gameData.lives = gameData.currentLevel.maxLives;
+	gameData.numberOfPillsLeft = gameData.currentLevel.maxPills;
+	gameData.zombiesLeft = gameData.currentLevel.maxNumberOfZombies;
+}
+
+
 // Set up initial game grid and place items at their respective positions
 // IN: Structs representing GameSpaceManager, GameObjectManager and GameData
 // OUT:
@@ -167,7 +203,7 @@ void initialiseGame(GameSpaceManager& gsm, GameObjectManager& gom, GameData& gam
 	void setItemInitialCoordinates(const char itemSymbol, Item& item, char[][SIZEX]);
 	void updateGrid(GameSpaceManager& gsm, GameObjectManager& gom);
 	void setMultipleItems(const char itemSymbol, int maxNumOfItems, vector<Item>& itemStore, char grid[][SIZEX]);
-	void setZombies(char grid[][SIZEX], vector<Item>& zombies, GameData data);
+	void setZombies(char grid[][SIZEX], vector<Item>& zombies, GameData& gameData);
 
 	assert(true);
 
@@ -175,8 +211,8 @@ void initialiseGame(GameSpaceManager& gsm, GameObjectManager& gom, GameData& gam
 	setInitialMazeStructure(gsm.maze);										// initialise maze
 	setMaze(gsm.grid, gsm.maze);											// Create first empty game frame
 	setZombies(gsm.grid, gom.zombies, gameData);							// Place zombies first so that nothing spawns over the corners.
-	setMultipleItems(HOLE, gameData.numberOfHoles, gom.holes, gsm.grid);	// Place the holes second
-	setMultipleItems(PILL, gameData.maxPills, gom.pills, gsm.grid);			// Place the pills
+	setMultipleItems(HOLE, gameData.currentLevel.maxNumberOfHoles, gom.holes, gsm.grid);	// Place the holes second
+	setMultipleItems(PILL, gameData.currentLevel.maxPills, gom.pills, gsm.grid);			// Place the pills
 	setItemInitialCoordinates(SPOT, gom.spot, gsm.grid);					// Finally place Spot
 }
 
@@ -255,7 +291,7 @@ void setInitialMazeStructure(char maze[][SIZEX]) {
 // OUT: Zombie coordinates set to defaults, zombies set to be alive
 // Precondition: None
 // Postcondition: All zombies placed in their initial corners and alive
-void setZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData data) {
+void setZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData& gameData) {
 	// function declarations (prototypes)
 	void resetZombieCoordinates(Item& zombieStore);
 	void placeItem(char g[][SIZEX], const Item& item);
@@ -267,7 +303,7 @@ void setZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData data) {
 	int yDef[4] = { 1, SIZEY - 2, SIZEY - 2, 1 }; // Position defaults y co-ord
 
 	// Function body
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < gameData.currentLevel.maxNumberOfZombies; i++) {
 		Item z1;
 		z1.defaultLoc.x = xDef[i];
 		z1.defaultLoc.y = yDef[i];
@@ -442,10 +478,10 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gam
 			moveZombies(g, gom, gameData, endGameMessage);
 		}
 		if (gameData.magicProtected > 0) {
-			cout << '\a'; // TODO beep the alarm
+			cout << '\a'; // beep the alarm
 			gameData.magicProtected--;
 			if (gameData.magicProtected == 0) {
-				gom.spot.symbol = SPOT; // TODO reset spot back to original colour and stop beeping
+				gom.spot.symbol = SPOT; // Reset spot back to original colour
 			}
 		}
 	}
@@ -470,7 +506,7 @@ void moveZombies(const char grid[][SIZEX], GameObjectManager& gom, GameData& dat
 		if (gom.zombies.at(i).active) { // Only moves if alive			
 			if (gom.zombies.at(i).currentLoc.x != gom.spot.currentLoc.x || gom.zombies.at(i).currentLoc.y != gom.spot.currentLoc.y) { // Only does all checks if coordinates are not equal
 
-				if (data.magicProtected <= 0) { // TODO Nico: Magic protection check! 
+				if (data.magicProtected <= 0) { // Magic protection check! 
 					// X MOVEMENT				
 					if (gom.zombies.at(i).currentLoc.x > gom.spot.currentLoc.x) { // Move towards Spot if Spot X is to lower
 						gom.zombies.at(i).currentLoc.x--;
@@ -486,7 +522,7 @@ void moveZombies(const char grid[][SIZEX], GameObjectManager& gom, GameData& dat
 						gom.zombies.at(i).currentLoc.y++;
 					}
 				}
-				else { // TODO Nico: zombie run away movement
+				else { // Zombie run away movement
 					int zx, zy;
 					if (gom.zombies.at(i).currentLoc.x == gom.spot.currentLoc.x) {
 						zx = 0;
@@ -546,7 +582,7 @@ void eatPill(GameObjectManager& gom, GameData& gameData) {
 			gom.pills.at(i).active = false;
 			gameData.lives++;
 			gameData.numberOfPillsLeft--;
-			gameData.magicProtected = 10; // TODO Nico: Magic protection, probably not the best place, but here for now
+			gameData.magicProtected = gameData.currentLevel.lengthOfMagicProtection;
 			gom.spot.symbol = SSJSPOT;
 		}
 	}
@@ -564,11 +600,11 @@ void zombiesFell(GameObjectManager& gom, GameData& gameData, string& endGameMess
 	assert(true);
 
 	// Function body
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < gameData.currentLevel.maxNumberOfZombies; i++) {
 		if (gom.zombies.at(i).active) {
 			bool fallen = false;
 			int j = 0;
-			while (!fallen && j < gameData.numberOfHoles) {
+			while (!fallen && j < gom.holes.size()) {
 				if (gom.zombies.at(i).currentLoc.x == gom.holes.at(j).currentLoc.x && gom.zombies.at(i).currentLoc.y == gom.holes.at(j).currentLoc.y) {
 					fallen = true;
 				}
@@ -905,38 +941,31 @@ void displayControlsMenu(const WORD firstColour, const WORD secondColour, const 
 }
 
 // Entry screen display
-void displayEntryScreen(PlayerInfo& playerData) {
+void displayEntryScreen() {
 	void showGameTitle(const WORD backColour, const WORD textColour, int x, int y);
 	void showGroupMembers(const WORD backColour, const WORD textColour, int x, int y);
 	void displayTimeAndDate(const WORD firstColour, const WORD secondColour, const int x, const int y);
 	void displayNameRequest(const WORD backColour, const WORD textColour, int x, int y);
-	void getUserName(string& name);
-	void checkAndLoadUserSavedData(const string& userName, PlayerInfo& playerData);
+
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
 	assert(true);
-
-	// Local variables
-	string name = "";
-
 	// Function body
+
+	SelectBackColour(clGrey); // Doing a full screen refresh here, setting the background colour to grey
+	Clrscr();
 	showGameTitle(clDarkGrey, clYellow, 10, 6);
 	showGroupMembers(clDarkGrey, clYellow, 10, 10);
 	displayTimeAndDate(clDarkGrey, clYellow, 40, 1);
 	displayNameRequest(clDarkGrey, clYellow, 10, 20);
-	getUserName(name);
-	while (name == "") {
-		SelectBackColour(clBlack); // Doing a full screen refresh here, setting the background colour to black
-		Clrscr();
-		showGameTitle(clDarkGrey, clYellow, 10, 6);
-		showGroupMembers(clDarkGrey, clYellow, 10, 10);
-		displayTimeAndDate(clDarkGrey, clYellow, 40, 1);
-		displayNameRequest(clDarkGrey, clYellow, 10, 20);
-		showMessage(clDarkGrey, clRed, 10, 22, "Invalid entry, name must contain letters only!");
-		displayNameRequest(clDarkGrey, clYellow, 10, 20);
-		getUserName(name);
-	}
-	checkAndLoadUserSavedData(name, playerData);
+}
+
+void displayNameEntryErrorScreen() {
+	void displayEntryScreen();
+
+	displayEntryScreen();
+	showMessage(clDarkGrey, clRed, 10, 22, "Invalid entry, name must contain letters only!");
+	displayNameRequest(clDarkGrey, clYellow, 10, 20);
 }
 
 void displayEndGameMessages(const string& endGameMessage) {
