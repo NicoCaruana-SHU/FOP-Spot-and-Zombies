@@ -3,6 +3,7 @@
 // Author: Charlie Batten, Matt Bellamy, Nico Caruana
 // ---------------------------------------------------------------------------
 
+#pragma region include libraries
 // ---------------------------------------------------------------------------
 // ----- include libraries
 // ---------------------------------------------------------------------------
@@ -23,7 +24,9 @@
 #include "ConsoleUtils.h"	// for Clrscr, Gotoxy, etc.
 
 using namespace std;
+#pragma endregion
 
+#pragma region define constants
 // ---------------------------------------------------------------------------
 // ----- define constants
 // ---------------------------------------------------------------------------
@@ -87,7 +90,9 @@ struct GameData {					// Default game variable state, can be constructed differe
 };
 
 // TODO Add a difficulty struct with max number of items - Advanced tasks!
+#pragma endregion
 
+#pragma region run game
 // ---------------------------------------------------------------------------
 // ----- run game
 // ---------------------------------------------------------------------------
@@ -97,18 +102,15 @@ int main() {
 	void displayEntryScreen(PlayerInfo& playerData);
 	void initialiseGame(GameSpaceManager& gsm, GameObjectManager& gom, GameData& gameData);
 	void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const GameData& gameData, const string& mess);
-	void killZombies(vector<Item>& zombies);
-	void spawnZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData& data);
-	bool allZombiesDead(vector<Item> zombies);
-	void moveZombies(const char grid[][SIZEX], GameObjectManager& gom, GameData& data);
 	bool wantsToQuit(const int key);
-	bool isArrowKey(const int k);
 	int  getKeyPress();
+	bool isArrowKey(const int k);
 	void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gameData, const int key, string& mess);
+	void commandCheck(int key, string& message, GameSpaceManager& gsm, GameObjectManager& gom, GameData& gameData);
 	void updateGrid(GameSpaceManager& gsm, GameObjectManager& gom);
 	void gameOver(const PlayerInfo& playerData, const GameData& gameData);
 	void endProgram();
-	void gameWon(GameData& gameData);
+
 
 	// local variable declarations
 	GameSpaceManager gsm;
@@ -121,7 +123,6 @@ int main() {
 	Seed();															// seed the random number generator
 	SetConsoleTitle("Spot and Zombies Game - FoP 2017-18");
 	displayEntryScreen(playerData);
-	Clrscr();														// Using included libraries, clears the game screen - sets it all grey.
 	initialiseGame(gsm, gom, gameData);								// initialise grid (incl. walls and spot)	
 	paintGame(gsm, playerData, gameData, message);					// display game info, modified grid and messages
 	int key;														// current key selected by player
@@ -129,62 +130,20 @@ int main() {
 		key = toupper(getKeyPress()); 								// read in  selected key: arrow or letter command
 		if (isArrowKey(key)) {
 			updateGameData(gsm.grid, gom, gameData, key, message);	// move spot in that direction
-			updateGrid(gsm, gom);									// update grid information
 		}
 		else {
-			switch (key) {
-			case FREEZE:
-				gameData.hasCheated = true;							// Flag the gamestate as having cheated to prevent high score saving later.
-				gameData.zombiesFrozen = !gameData.zombiesFrozen;	// Toggle value on each keypress. Boolean later checked to allow zombies to move.
-				if (gameData.zombiesFrozen) {
-					message = "CHEAT: ZOMBIES FROZEN!";
-				}
-				else {
-					message = "CHEAT: ZOMBIES UNFROZEN!";
-				}
-				break;
-			case EXTERMINATE: // TODO Cheat in basic version kills zombies on first press regardless of amount left. Will need to tweak this to follow suit.				
-				gameData.hasCheated = true;							// Flag the gamestate as having cheated to prevent high score saving later.
-				if (allZombiesDead(gom.zombies)) {					// If all zombies are already dead, resets them to default spawn locations and respawns them					
-					spawnZombies(gsm.grid, gom.zombies, gameData);	// NOTE: spawnZombies was changed to use existing data for purposes such as this; replaced with setZombies
-				}
-				else {												// Exterminate all zombies on screen
-					killZombies(gom.zombies);
-					gameData.zombiesLeft = 0;
-					if (gameData.numberOfPillsLeft == 0)
-					{
-						gameWon(gameData);
-					}
-				}
-				break;
-			case EAT:
-				gameData.hasCheated = true;							// Flag the gamestate as having cheated to prevent high score saving later.
-				for (int i = 0; i < gom.pills.size(); i++) {		// Set all pills visible flag to false so that they no longer get rendered in the game display.
-					gom.pills.at(i).active = false;
-				}
-				gameData.numberOfPillsLeft = 0;						// Player is not rewarded for pills eaten this way, so set pills to zero without changing lives left.
-				message = "CHEAT: EAT!";
-				if (gameData.zombiesLeft == 0)
-				{
-					gameWon(gameData);
-				}
-				break;
-			case QUIT:
-				message = "GAME STOPPED";
-				break;
-			default:
-				message = "INVALID KEY!";					// set 'Invalid key' message if keypress not recognised as valid input.
-			}
-			updateGrid(gsm, gom);							// Re-Update grid to apply changes
+			commandCheck(key, message, gsm, gom, gameData);
 		}
-		paintGame(gsm, playerData, gameData, message);		// display game info, modified grid and messages
-	} while ((!wantsToQuit(key)) && (!gameData.gameEnded));	// while user does not want to quit
-	gameOver(playerData, gameData);							// HACK Save highscore data on player quit, if not cheated. Doesn't make sense in game terms really... Allows quitting early to manipulate highscore.. but spec does this, so its in for now.
-	endProgram();											// display final message
+		updateGrid(gsm, gom);										// Re-Update grid to apply changes
+		paintGame(gsm, playerData, gameData, message);				// display game info, modified grid and messages
+	} while ((!wantsToQuit(key)) && (!gameData.gameEnded));			// while user does not want to quit
+	gameOver(playerData, gameData);									// HACK Save highscore data on player quit, if not cheated. Doesn't make sense in game terms really... Allows quitting early to manipulate highscore.. but spec does this, so its in for now.
+	endProgram();													// display final message
 	return 0;
 }
+#pragma endregion
 
-
+#pragma region initialise game state
 // ---------------------------------------------------------------------------
 // ----- initialise game state
 // ---------------------------------------------------------------------------
@@ -365,7 +324,9 @@ void spawnZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData& data)
 	}
 	data.zombiesLeft = 4;
 }
+#pragma endregion
 
+#pragma region update grid state
 // ---------------------------------------------------------------------------
 // ----- update grid state
 // ---------------------------------------------------------------------------
@@ -456,6 +417,7 @@ void placeZombies(char grid[][SIZEX], vector<Item> zombieStore) {
 		}
 	}
 }
+#pragma endregion
 
 // ---------------------------------------------------------------------------
 // ----- move items on the grid
@@ -764,6 +726,72 @@ void getUserName(string& name) {
 	}
 }
 
+void commandCheck(int key, string& message, GameSpaceManager& gsm, GameObjectManager& gom, GameData& gameData) {
+	void freezeCheat(string& message, GameData gameData);
+	void spawnZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData& data);
+	void gameWon(GameData& gameData);
+
+	switch (key) {
+	case FREEZE:
+		freezeCheat(message, gameData);
+		break;
+	case EXTERMINATE: // TODO Cheat in basic version kills zombies on first press regardless of amount left. Will need to tweak this to follow suit.				
+		gameData.hasCheated = true;							// Flag the gamestate as having cheated to prevent high score saving later.
+		if (allZombiesDead(gom.zombies)) {					// If all zombies are already dead, resets them to default spawn locations and respawns them					
+			spawnZombies(gsm.grid, gom.zombies, gameData);	// NOTE: spawnZombies was changed to use existing data for purposes such as this; replaced with setZombies
+		}
+		else {												// Exterminate all zombies on screen
+			killZombies(gom.zombies);
+			gameData.zombiesLeft = 0;
+			if (gameData.numberOfPillsLeft == 0)
+			{
+				gameWon(gameData);
+			}
+		}
+		break;
+	case EAT:
+		gameData.hasCheated = true;							// Flag the gamestate as having cheated to prevent high score saving later.
+		for (int i = 0; i < gom.pills.size(); i++) {		// Set all pills visible flag to false so that they no longer get rendered in the game display.
+			gom.pills.at(i).active = false;
+		}
+		gameData.numberOfPillsLeft = 0;						// Player is not rewarded for pills eaten this way, so set pills to zero without changing lives left.
+		message = "CHEAT: EAT!";
+		if (gameData.zombiesLeft == 0)
+		{
+			gameWon(gameData);
+		}
+		break;
+	case QUIT:
+		message = "GAME STOPPED";
+		break;
+	default:
+		message = "INVALID KEY!";					// set 'Invalid key' message if keypress not recognised as valid input.
+	}
+}
+
+#pragma region cheat actions
+// ---------------------------------------------------------------------------
+// ----- cheat actions
+// ---------------------------------------------------------------------------
+
+void freezeCheat(string& message, GameData gameData) {
+	gameData.hasCheated = true;							// Flag the gamestate as having cheated to prevent high score saving later.
+	gameData.zombiesFrozen = !gameData.zombiesFrozen;	// Toggle value on each keypress. Boolean later checked to allow zombies to move.
+	if (gameData.zombiesFrozen) {
+		message = "CHEAT: ZOMBIES FROZEN!";
+	}
+	else {
+		message = "CHEAT: ZOMBIES UNFROZEN!";
+	}
+}
+
+void exterminateCheat() {
+
+}
+
+#pragma endregion
+
+#pragma region display info on screen
 // ---------------------------------------------------------------------------
 // ----- display info on screen
 // ---------------------------------------------------------------------------
@@ -837,11 +865,11 @@ void displayControlsMenu(const WORD firstColour, const WORD secondColour, const 
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
 	showMessage(firstColour, secondColour, x, y, "TO MOVE USE KEYBOARD ARROWS ");
-	showMessage(firstColour, secondColour, x, y+1, "TO QUIT ENTER 'Q'           ");
-	showMessage(firstColour, secondColour, x, y+3, "CHEATS                        ");
-	showMessage(firstColour, secondColour, x, y+4, "TO FREEZE ZOMBIES PRESS '" + tostring(FREEZE) + "'   ");
-	showMessage(firstColour, secondColour, x, y+5, "TO KILL ALL ZOMBIES PRESS '" + tostring(EXTERMINATE) + "' ");
-	showMessage(firstColour, secondColour, x, y+6, "TO EAT ALL PILLS PRESS '" + tostring(EAT) + "'    ");
+	showMessage(firstColour, secondColour, x, y + 1, "TO QUIT ENTER 'Q'           ");
+	showMessage(firstColour, secondColour, x, y + 3, "CHEATS                        ");
+	showMessage(firstColour, secondColour, x, y + 4, "TO FREEZE ZOMBIES PRESS '" + tostring(FREEZE) + "'   ");
+	showMessage(firstColour, secondColour, x, y + 5, "TO KILL ALL ZOMBIES PRESS '" + tostring(EXTERMINATE) + "' ");
+	showMessage(firstColour, secondColour, x, y + 6, "TO EAT ALL PILLS PRESS '" + tostring(EAT) + "'    ");
 }
 
 // Entry screen display
@@ -865,7 +893,7 @@ void displayEntryScreen(PlayerInfo& playerData) {
 	displayTimeAndDate(clDarkGrey, clYellow, 40, 1);
 	displayNameRequest(clDarkGrey, clYellow, 10, 20);
 	getUserName(name);
-	while (name == ""){
+	while (name == "") {
 		SelectBackColour(clBlack); // Doing a full screen refresh here, setting the background colour to black
 		Clrscr();
 		showGameTitle(clDarkGrey, clYellow, 10, 6);
@@ -895,6 +923,10 @@ void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const 
 	void displayTimeAndDate(const WORD firstColour, const WORD secondColour, const int x, const int y);
 
 	// Function body
+
+	SelectBackColour(clGrey);
+	Clrscr();														// Using included libraries, clears the game screen - sets it all grey.
+
 	// display game title
 	showMessage(clDarkGreen, clGreen, 0, 0, "___SPOT AND ZOMBIES GAME___");
 	showMessage(clYellow, clBlue, 40, 0, "FoP Task 1c: February 2018");
@@ -902,10 +934,10 @@ void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const 
 
 	// print auxiliary messages if any
 	showMessage(clBlack, clYellow, 40, 6, mess);	// display current message
-	
+
 	displayControlsMenu(clRed, clGreen, 40, 8);		// display menu options available
 	displayPlayerInformation(playerData, 40, 16);
-	displayGameInformation(gameData, 40, 19);	
+	displayGameInformation(gameData, 40, 19);
 	paintGrid(gsm);									// display grid contents
 }
 
@@ -938,7 +970,9 @@ void paintGrid(const GameSpaceManager& gsm) {
 		cout << endl;
 	}
 }
+#pragma endregion
 
+#pragma region game end
 // ---------------------------------------------------------------------------
 // ----- game end
 // ---------------------------------------------------------------------------
@@ -973,7 +1007,9 @@ void gameWon(GameData& gameData) {
 	gameData.gameEnded = true;
 	showMessage(clGrey, clRed, 40, 25, "YOU WON WITH " + tostring(gameData.lives) + " LIVES LEFT");
 }
+#pragma endregion
 
+#pragma region data management
 // ---------------------------------------------------------------------------
 // ----- data management
 // ---------------------------------------------------------------------------
@@ -1007,6 +1043,7 @@ void saveUserData(const PlayerInfo& playerData, const int newHighScore) {
 		cout << "Error saving data! Highscore not recorded!";
 	}
 }
+#pragma endregion
 
 // ---------------------------------------------------------------------------
 // ----- time functions
