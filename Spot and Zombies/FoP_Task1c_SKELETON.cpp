@@ -471,7 +471,6 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gam
 	setKeyDirection(key, dx, dy);							// calculate direction of movement for given key
 	switch (g[gom.spot.y + dy][gom.spot.x + dx]) {			// check new target position in grid and update game data (incl. spot coordinates) if move is possible
 		// ...depending on what's on the target position in grid...
-	case ZOMBIE: // HACK Nico: This fixes the zombies blocking movement issues, not seen anything untoward from it yet, but issues may pop up.
 	case TUNNEL:		// can move
 		gom.spot.y += dy;	// go in that Y direction
 		gom.spot.x += dx;	// go in that X direction
@@ -480,6 +479,7 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gam
 		mess = "CANNOT GO THERE!";
 		playerMoved = false;
 		break;
+	case ZOMBIE: // Allow movement onto zombie square, but must also check for pill underlying too.
 	case PILL:
 		gom.spot.x += dx;
 		gom.spot.y += dy;
