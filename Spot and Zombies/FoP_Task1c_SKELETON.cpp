@@ -92,6 +92,7 @@ struct GameData {					// Default game variable state, can be constructed differe
 	bool zombiesFrozen = false;		// Flag to determine whether zombies can move
 	bool zombiesTerminated = false;
 	bool gameEnded = false;
+	int magicProtected = 0; // TODO Nico: temporary magic protection variable
 };
 
 // TODO Add a difficulty struct with max number of items - Advanced tasks!
@@ -420,7 +421,15 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gam
 	}
 	if ((!gameData.gameEnded) && (!gameData.zombiesFrozen) && (playerMoved)) {
 		moveZombies(g, gom, gameData, endGameMessage);
+		if (gameData.magicProtected != 0) {
+			gameData.magicProtected--;
+			cout << '\a'; // TODO beep the alarm
+		}
+		else {
+			// TODO reset spot back to original colour and stop beeping
+		}
 	}
+
 
 }
 
@@ -440,40 +449,50 @@ void moveZombies(const char grid[][SIZEX], GameObjectManager& gom, GameData& dat
 	// Function body
 	for (int i = 0; i < 4; i++) {
 		if (gom.zombies.at(i).active) { // Only moves if alive			
-			if (gom.zombies.at(i).currentLoc.x != gom.spot.currentLoc.x || gom.zombies.at(i).currentLoc.y != gom.spot.currentLoc.y) { // Only does all checks if coordinates are not equal
-																						  // X MOVEMENT				
-				if (gom.zombies.at(i).currentLoc.x > gom.spot.currentLoc.x) { // Move towards Spot if Spot X is to lower
-														// 1/4 chance to not move
-														//if ((rand() % 4) != 1) {
-					gom.zombies.at(i).currentLoc.x--;
-					//}
-				}
-				else if (gom.zombies.at(i).currentLoc.x < gom.spot.currentLoc.x) { // Move towards Spot if Spot X is higher
-															 // 1/4 chance to not move
-															 //if ((rand() % 4) != 1) {
-					gom.zombies.at(i).currentLoc.x++;
-					//}
-				}
-				// Y MOVEMENT
+			if (gom.zombies.at(i).x != gom.spot.x || gom.zombies.at(i).y != gom.spot.y) { // Only does all checks if coordinates are not equal
 
-				if (gom.zombies.at(i).currentLoc.y > gom.spot.currentLoc.y) { // Move towards Spot if Spot Y is lower
-														// 1/4 chance to not move
-														//if ((rand() % 4) != 1) {
-					gom.zombies.at(i).currentLoc.y--;
-					//}
-				}
-				else if (gom.zombies.at(i).currentLoc.y < gom.spot.currentLoc.y) { // Move towards Spot if Spot Y is higher
-															 // 1/4 chance to not move
-															 //if ((rand() % 4) != 1) {
-					gom.zombies.at(i).currentLoc.y++;
-					//}
+				if (data.magicProtected <= 0) { // TODO Nico: Magic protection check! 
+					// X MOVEMENT				
+					if (gom.zombies.at(i).x > gom.spot.x) { // Move towards Spot if Spot X is to lower
+						gom.zombies.at(i).x--;
+					}
+					else if (gom.zombies.at(i).x < gom.spot.x) { // Move towards Spot if Spot X is higher
+						gom.zombies.at(i).x++;
+					}
+					// Y MOVEMENT
+					if (gom.zombies.at(i).y > gom.spot.y) { // Move towards Spot if Spot Y is lower														
+						gom.zombies.at(i).y--;
+					}
+					else if (gom.zombies.at(i).y < gom.spot.y) { // Move towards Spot if Spot Y is higher
+						gom.zombies.at(i).y++;
+					}
+				}// TODO Nico: zombie run away movement
+				else {
+					int zx, zy;
+					if (gom.zombies.at(i).x == gom.spot.x) {
+						zx = 0;
+					}
+					else {
+						zx = (gom.zombies.at(i).x > gom.spot.x) ? 1 : -1;
+					}
+					if (gom.zombies.at(i).y == gom.spot.y) {
+						zy = 0;
+					}
+					else {
+						zy = (gom.zombies.at(i).y > gom.spot.y) ? 1 : -1;
+					}
+					if (grid[gom.zombies.at(i).y + zy][gom.zombies.at(i).x + zx] != WALL) {
+						gom.zombies.at(i).y += zy;
+						gom.zombies.at(i).x += zx;
+					}
+
 				}
 			}
 		}
-		zombiesFell(gom, data, endGameMessage);					//Checks if zombies have fallen into holes		
-		zombiesHitSpot(gom, data, endGameMessage);				// Checks if zombies have run into spot and causes damage+resets zombie if applicable		
-		zombiesBumped(gom.zombies);				// Checks to see if zombies have bumped into one another through movement and resets their coordinates if necessary
 	}
+	zombiesFell(gom, data);					//Checks if zombies have fallen into holes		
+	zombiesHitSpot(gom, data);				// Checks if zombies have run into spot and causes damage+resets zombie if applicable		
+	zombiesBumped(gom.zombies);				// Checks to see if zombies have bumped into one another through movement and resets their coordinates if necessary
 }
 
 // Zombies coordinate reset function
@@ -509,6 +528,7 @@ void eatPill(GameObjectManager& gom, GameData& gameData) {
 			gom.pills.at(i).active = false;
 			gameData.lives++;
 			gameData.numberOfPillsLeft--;
+			gameData.magicProtected = 10; // TODO Nico: Magic protection, probably not the best place, but here for now
 		}
 	}
 }
@@ -596,6 +616,21 @@ void zombiesBumped(vector<Item>& zombieStore) {
 						}
 					}
 				}
+			}
+		}
+	}
+}
+
+void spotHitZombies(GameObjectManager& gom, GameData& gameData) {
+
+	assert(true);
+
+	// Function body
+	for (int i = 0; i < 4; i++) {
+		if (gom.zombies.at(i).active) {
+			if (gom.zombies.at(i).x == gom.spot.x && gom.zombies.at(i).y == gom.spot.y) {
+				gom.zombies.at(i).active = false;
+				gameData.zombiesLeft--;
 			}
 		}
 	}
@@ -832,7 +867,7 @@ void displayGameInformation(const GameData& gameData, int x, int y) {
 	showMessage(clDarkGrey, clYellow, x, y, "REMAINING LIVES: " + tostring(gameData.lives));
 	showMessage(clDarkGrey, clYellow, x, y + 1, "ZOMBIES LEFT: " + tostring(gameData.zombiesLeft));
 	showMessage(clDarkGrey, clYellow, x, y + 2, "NUMBER OF PILLS REMAINING: " + tostring(gameData.numberOfPillsLeft));
-
+	showMessage(clDarkGrey, clYellow, x, y + 3, "SuperSpot moves remaining: " + tostring(gameData.magicProtected));
 }
 
 void displayControlsMenu(const WORD firstColour, const WORD secondColour, const int x, const int y) {
@@ -1022,7 +1057,7 @@ void saveUserData(const PlayerInfo& playerData, const int newHighScore) {
 		fout << playerData.playerName << " " << newHighScore;
 	}
 	else {
-		//HACK Throw an error- Simple cout for now, ideas for a better way appreciated.
+		//HACK Nico: Throw an error- Simple cout for now, ideas for a better way appreciated.
 		cout << "Error saving data! Highscore not recorded!";
 	}
 }
