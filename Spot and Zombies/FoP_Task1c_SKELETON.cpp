@@ -368,6 +368,7 @@ void placeMultipleItems(char g[][SIZEX], const vector<Item>& itemStore) {
 
 #pragma endregion
 
+#pragma region move items on the grid
 // ---------------------------------------------------------------------------
 // ----- move items on the grid
 // ---------------------------------------------------------------------------
@@ -486,7 +487,9 @@ void resetZombieCoordinates(Item& zombieStore) {
 	zombieStore.currentLoc = zombieStore.defaultLoc;
 	zombieStore.active = true;
 }
+#pragma endregion
 
+#pragma region collision behaviour
 // ---------------------------------------------------------------------------
 // ----- collision behaviour
 // ---------------------------------------------------------------------------
@@ -596,7 +599,9 @@ void zombiesBumped(vector<Item>& zombieStore) {
 		}
 	}
 }
+#pragma endregion
 
+#pragma region process inputs
 // ---------------------------------------------------------------------------
 // ----- process inputs
 // ---------------------------------------------------------------------------
@@ -697,6 +702,7 @@ void commandCheck(int key, string& message, GameSpaceManager& gsm, GameObjectMan
 		message = "INVALID KEY!";					// set 'Invalid key' message if keypress not recognised as valid input.
 	}
 }
+#pragma endregion
 
 #pragma region cheat actions
 // ---------------------------------------------------------------------------
