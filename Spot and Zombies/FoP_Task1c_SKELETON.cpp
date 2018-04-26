@@ -115,7 +115,7 @@ Difficulty hard{ "HARD", 2, 3, 2, 4, 5 };
 
 int main() {
 	// Function declarations (prototypes)
-	void displayEntryScreen();
+	void displayNameEntryScreen();
 	void initialiseGame(GameSpaceManager& gsm, GameObjectManager& gom, GameData& gameData);
 	void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const GameData& gameData, const string& mess, const string& endGameMessage);
 	bool wantsToQuit(const int key);
@@ -128,9 +128,12 @@ int main() {
 	void endProgram();
 
 	void getUserName(string& name);
+	int getUserDifficultyChoice();
 	void checkAndLoadUserSavedData(const string& userName, PlayerInfo& playerData);
 	void initialiseDifficultyVariables(GameData& gameData);
 	void displayNameEntryErrorScreen();
+	void displayLevelSelectScreen();
+	void displayLevelSelectErrorScreen();
 
 	// local variable declarations
 	GameSpaceManager gsm;
@@ -140,6 +143,7 @@ int main() {
 	string message("LET'S START...");												// current message to player
 	string endGameMessage = "";
 	string name = "";
+	int desiredDifficulty = 0;
 
 	gameData.currentLevel = hard;
 	initialiseDifficultyVariables(gameData);
@@ -147,16 +151,24 @@ int main() {
 	// Function body
 	Seed();																			// seed the random number generator
 	SetConsoleTitle("Spot and Zombies Game - FoP 2017-18");
-	displayEntryScreen();
+	displayNameEntryScreen();
 	do
 	{
 		getUserName(name);
 		if (name == "")
-		{
 			displayNameEntryErrorScreen();
-		}
 	} while (name == "");
 	checkAndLoadUserSavedData(name, playerData);
+
+	displayLevelSelectScreen();
+	do
+	{
+		desiredDifficulty = getUserDifficultyChoice();
+		if (desiredDifficulty < 1 || desiredDifficulty > 3)
+		{
+			displayLevelSelectErrorScreen();
+		}
+	} while (desiredDifficulty < 1 || desiredDifficulty > 3);
 
 	initialiseGame(gsm, gom, gameData);												// initialise grid (incl. walls and spot)	
 	paintGame(gsm, playerData, gameData, message, endGameMessage);					// display game info, modified grid and messages
@@ -775,6 +787,19 @@ void getUserName(string& name) {
 	}
 }
 
+int getUserDifficultyChoice() {
+	assert(true);
+
+	// Local variables
+	int desiredDiff;
+	
+	// Function body 
+	cin >> setw(1) >> desiredDiff;					// Get input from user, using cin.
+	// TODO need input validation on this.
+
+	return desiredDiff;
+}
+
 void commandCheck(int key, string& message, string& endGameMessage, GameSpaceManager& gsm, GameObjectManager& gom, GameData& gameData) {
 	void freezeCheat(string& message, GameData& gameData);
 	void exterminateCheat(string& message, string& endGameMessage, GameData& gameData, GameObjectManager& gom, GameSpaceManager& gsm);
@@ -913,6 +938,12 @@ void displayNameRequest(const WORD backColour, const WORD textColour, int x, int
 	SelectTextColour(clGreen);
 }
 
+void displayLevelRequest(const WORD backColour, const WORD textColour, int x, int y) {
+	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
+	showMessage(backColour, textColour, x, y, "Select your difficulty (1 - EASY, 2-NORMAL, 3-HARD): ");
+	SelectTextColour(clGreen);
+}
+
 void displayPlayerInformation(const PlayerInfo& playerData, int x, int y) {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
@@ -957,15 +988,35 @@ void displayEntryScreen() {
 	showGameTitle(clDarkGrey, clYellow, 10, 6);
 	showGroupMembers(clDarkGrey, clYellow, 10, 10);
 	displayTimeAndDate(clDarkGrey, clYellow, 40, 1);
+}
+
+void displayNameEntryScreen() {
+	void displayEntryScreen();
+	void displayNameRequest(const WORD backColour, const WORD textColour, int x, int y);
+
+	displayEntryScreen();
 	displayNameRequest(clDarkGrey, clYellow, 10, 20);
 }
 
 void displayNameEntryErrorScreen() {
+	void displayNameEntryScreen();
+
+	displayNameEntryScreen();
+	showMessage(clDarkGrey, clRed, 10, 22, "Invalid entry, name must contain letters only!");
+}
+
+void displayLevelSelectScreen() {
 	void displayEntryScreen();
 
 	displayEntryScreen();
-	showMessage(clDarkGrey, clRed, 10, 22, "Invalid entry, name must contain letters only!");
-	displayNameRequest(clDarkGrey, clYellow, 10, 20);
+	displayLevelRequest(clDarkGrey, clYellow, 10, 20);
+}
+
+void displayLevelSelectErrorScreen() {
+	void displayLevelSelectScreen();
+
+	displayLevelSelectScreen();
+	showMessage(clDarkGrey, clRed, 10, 22, "Invalid entry, level choice must be 1, 2 or 3!");
 }
 
 void displayEndGameMessages(const string& endGameMessage) {
