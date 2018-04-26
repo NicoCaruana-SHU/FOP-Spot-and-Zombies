@@ -100,6 +100,7 @@ struct GameData {					// Default game variable state, can be constructed differe
 	bool zombiesFrozen = false;		// Flag to determine whether zombies can move
 	bool zombiesTerminated = false;
 	bool gameEnded = false;
+	bool levelComplete = false;
 };
 
 
@@ -138,14 +139,12 @@ int main() {
 	void displayLevelSelectErrorScreen();
 
 	// local variable declarations
-	GameSpaceManager gsm;
-	GameObjectManager gom;
 	PlayerInfo playerData;
-	GameData gameData;
 	string message("LET'S START...");												// current message to player
 	string endGameMessage = "";
 	string name = "";
 	int desiredDifficulty = -1;
+	bool levelComplete = false;
 
 	// Function body
 	Seed();																			// seed the random number generator
@@ -167,24 +166,36 @@ int main() {
 		displayLevelSelectErrorScreen();
 		getUserDifficultyChoice(desiredDifficulty);
 	}
-	initialiseDifficultyVariables(gameData, difficultyLevels.at(desiredDifficulty-1));
 
-	initialiseGame(gsm, gom, gameData);												// initialise grid (incl. walls and spot)	
-	paintGame(gsm, playerData, gameData, message, endGameMessage);					// display game info, modified grid and messages
-	int key;																		// current key selected by player
-	do {
-		key = toupper(getKeyPress()); 												// read in  selected key: arrow or letter command
-		if (isArrowKey(key)) {
-			updateGameData(gsm.grid, gom, gameData, key, message, endGameMessage);	// move spot in that direction
-		}
-		else {
-			commandCheck(key, message, endGameMessage, gsm, gom, gameData);
-		}
-		updateGrid(gsm, gom);														// Re-Update grid to apply changes
-		paintGame(gsm, playerData, gameData, message, endGameMessage);				// display game info, modified grid and messages
-	} while ((!wantsToQuit(key)) && (!gameData.gameEnded));							// while user does not want to quit
-	gameOver(playerData, gameData);													// HACK Save highscore data on player quit, if not cheated. Doesn't make sense in game terms really... Allows quitting early to manipulate highscore.. but spec does this, so its in for now.
-	endProgram();																	// display final message
+	do
+	{
+		GameSpaceManager gsm;
+		GameObjectManager gom;
+		GameData gameData;
+
+		initialiseDifficultyVariables(gameData, difficultyLevels.at(desiredDifficulty - 1));
+
+		initialiseGame(gsm, gom, gameData);												// initialise grid (incl. walls and spot)	
+		paintGame(gsm, playerData, gameData, message, endGameMessage);					// display game info, modified grid and messages
+		int key;																		// current key selected by player
+		do {
+			key = toupper(getKeyPress()); 												// read in  selected key: arrow or letter command
+			if (isArrowKey(key)) {
+				updateGameData(gsm.grid, gom, gameData, key, message, endGameMessage);	// move spot in that direction
+			}
+			else {
+				commandCheck(key, message, endGameMessage, gsm, gom, gameData);
+			}
+			updateGrid(gsm, gom);														// Re-Update grid to apply changes
+			paintGame(gsm, playerData, gameData, message, endGameMessage);				// display game info, modified grid and messages
+		} while ((!wantsToQuit(key)) && (!gameData.gameEnded));							// while user does not want to quit
+		gameOver(playerData, gameData);													// HACK Save highscore data on player quit, if not cheated. Doesn't make sense in game terms really... Allows quitting early to manipulate highscore.. but spec does this, so its in for now.
+		desiredDifficulty++;
+		levelComplete = gameData.levelComplete;
+		endProgram();																	// display final message
+	} while ((desiredDifficulty <= difficultyLevels.size()) && (levelComplete));
+
+	// TODO maybe add in game completion screen when user has won all levels.
 	return 0;
 }
 #pragma endregion
@@ -1158,7 +1169,8 @@ void gameWon(GameData& gameData, string& endGameMessage) {
 
 	// Function body
 	gameData.gameEnded = true;
-	endGameMessage = "YOU WON WITH " + tostring(gameData.lives) + " LIVES LEFT";
+	gameData.levelComplete = true;
+	endGameMessage = "YOU WON " + gameData.currentLevel.levelName + " DIFFICULTY WITH " + tostring(gameData.lives) + " LIVES LEFT";
 }
 #pragma endregion
 
