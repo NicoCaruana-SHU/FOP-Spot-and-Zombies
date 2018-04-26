@@ -102,9 +102,11 @@ struct GameData {					// Default game variable state, can be constructed differe
 	bool gameEnded = false;
 };
 
+
 Difficulty easy{ "EASY", 12, 8, 8, 4, 10 };
 Difficulty normal{ "NORMAL", 5, 5, 5, 4, 8 };
 Difficulty hard{ "HARD", 2, 3, 2, 4, 5 };
+vector<Difficulty> difficultyLevels{ easy, normal, hard };
 
 #pragma endregion
 
@@ -128,9 +130,9 @@ int main() {
 	void endProgram();
 
 	void getUserName(string& name);
-	int getUserDifficultyChoice();
+	void getUserDifficultyChoice(int& desiredDifficulty);
 	void checkAndLoadUserSavedData(const string& userName, PlayerInfo& playerData);
-	void initialiseDifficultyVariables(GameData& gameData);
+	void initialiseDifficultyVariables(GameData& gameData, const Difficulty& chosenDifficulty);
 	void displayNameEntryErrorScreen();
 	void displayLevelSelectScreen();
 	void displayLevelSelectErrorScreen();
@@ -143,32 +145,29 @@ int main() {
 	string message("LET'S START...");												// current message to player
 	string endGameMessage = "";
 	string name = "";
-	int desiredDifficulty = 0;
-
-	gameData.currentLevel = hard;
-	initialiseDifficultyVariables(gameData);
+	int desiredDifficulty = -1;
 
 	// Function body
 	Seed();																			// seed the random number generator
 	SetConsoleTitle("Spot and Zombies Game - FoP 2017-18");
 	displayNameEntryScreen();
-	do
+	getUserName(name);
+	while (name == "")
 	{
+		displayNameEntryErrorScreen();
 		getUserName(name);
-		if (name == "")
-			displayNameEntryErrorScreen();
-	} while (name == "");
+	}
+
 	checkAndLoadUserSavedData(name, playerData);
 
 	displayLevelSelectScreen();
-	do
+	getUserDifficultyChoice(desiredDifficulty);
+	while ((desiredDifficulty < 1 || desiredDifficulty > difficultyLevels.size()))
 	{
-		desiredDifficulty = getUserDifficultyChoice();
-		if (desiredDifficulty < 1 || desiredDifficulty > 3)
-		{
-			displayLevelSelectErrorScreen();
-		}
-	} while (desiredDifficulty < 1 || desiredDifficulty > 3);
+		displayLevelSelectErrorScreen();
+		getUserDifficultyChoice(desiredDifficulty);
+	}
+	initialiseDifficultyVariables(gameData, difficultyLevels.at(desiredDifficulty-1));
 
 	initialiseGame(gsm, gom, gameData);												// initialise grid (incl. walls and spot)	
 	paintGame(gsm, playerData, gameData, message, endGameMessage);					// display game info, modified grid and messages
@@ -196,7 +195,8 @@ int main() {
 // ---------------------------------------------------------------------------
 
 
-void initialiseDifficultyVariables(GameData& gameData) {
+void initialiseDifficultyVariables(GameData& gameData, const Difficulty& chosenDifficulty) {
+	gameData.currentLevel = chosenDifficulty;
 	gameData.lives = gameData.currentLevel.maxLives;
 	gameData.numberOfPillsLeft = gameData.currentLevel.maxPills;
 	gameData.zombiesLeft = gameData.currentLevel.maxNumberOfZombies;
@@ -787,17 +787,28 @@ void getUserName(string& name) {
 	}
 }
 
-int getUserDifficultyChoice() {
+void getUserDifficultyChoice(int& desiredDifficulty) {
 	assert(true);
+	string userInput;
 
-	// Local variables
-	int desiredDiff;
-	
+	bool valid = true;
+
 	// Function body 
-	cin >> setw(1) >> desiredDiff;					// Get input from user, using cin.
-	// TODO need input validation on this.
-
-	return desiredDiff;
+	cin >> userInput;					// Get input from user, using cin.
+	int i = 0;
+	while (valid && (i < userInput.length())) {					// Loop while the name is still considered valid, and end of string hasn't been reached.
+		if (!(userInput.at(i) >= '0') && (userInput.at(i) <= '9')) {	// Check if character is not a valid letter a-z including capitals.
+			valid = false;									// Flag name invalid if invalid character found
+		}
+		++i;												// Increment counter to continue iterating through string.
+	}
+	if (valid) {
+		istringstream numberString(userInput);
+		numberString >> desiredDifficulty;
+	}
+	else {
+		desiredDifficulty = -1;// If an invalid character has been found, reset the string to empty. 
+	}
 }
 
 void commandCheck(int key, string& message, string& endGameMessage, GameSpaceManager& gsm, GameObjectManager& gom, GameData& gameData) {
@@ -999,10 +1010,15 @@ void displayNameEntryScreen() {
 }
 
 void displayNameEntryErrorScreen() {
+	void GetCurrentCursorPosition(CoOrd& currentScreenPosition);
 	void displayNameEntryScreen();
 
+	CoOrd currentScreenposition;
 	displayNameEntryScreen();
+	GetCurrentCursorPosition(currentScreenposition);
 	showMessage(clDarkGrey, clRed, 10, 22, "Invalid entry, name must contain letters only!");
+	Gotoxy(currentScreenposition.x, currentScreenposition.y);
+	SelectTextColour(clGreen);
 }
 
 void displayLevelSelectScreen() {
@@ -1013,10 +1029,15 @@ void displayLevelSelectScreen() {
 }
 
 void displayLevelSelectErrorScreen() {
+	void GetCurrentCursorPosition(CoOrd& currentScreenPosition);
 	void displayLevelSelectScreen();
 
+	CoOrd currentScreenposition;
 	displayLevelSelectScreen();
-	showMessage(clDarkGrey, clRed, 10, 22, "Invalid entry, level choice must be 1, 2 or 3!");
+	GetCurrentCursorPosition(currentScreenposition);
+	showMessage(clDarkGrey, clRed, 10, 22, "Invalid entry, level choice must be 1, 2 or 3!"); // TODO Could make this scale dependant on number of levels.
+	Gotoxy(currentScreenposition.x, currentScreenposition.y);
+	SelectTextColour(clGreen);
 }
 
 void displayEndGameMessages(const string& endGameMessage) {
@@ -1094,6 +1115,14 @@ void paintGrid(const GameSpaceManager& gsm) {
 		cout << endl;
 	}
 }
+
+void GetCurrentCursorPosition(CoOrd& currentScreenPosition) {
+	CONSOLE_SCREEN_BUFFER_INFO csbi;
+	GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+	currentScreenPosition.x = csbi.dwCursorPosition.X;
+	currentScreenPosition.y = csbi.dwCursorPosition.Y;
+}
+
 #pragma endregion
 
 #pragma region game end
