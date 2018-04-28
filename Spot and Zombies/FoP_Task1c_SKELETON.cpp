@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Program: Task 1c â€“ group assignment
+// Program: Task 1c – group assignment
 // Author: Charlie Batten, Matt Bellamy, Nico Caruana
 // ---------------------------------------------------------------------------
 
@@ -34,7 +34,7 @@ using namespace std;
 // defining the size of the grid
 const int  SIZEX(25);    		// horizontal dimension
 const int  SIZEY(20);			// vertical dimension
-// defining symbols used for display of the grid and content
+								// defining symbols used for display of the grid and content
 const char SPOT('@');
 const char TUNNEL(' ');
 const char WALL('#');
@@ -42,6 +42,7 @@ const char HOLE('0');
 const char PILL('*');
 const char ZOMBIE('Z');
 const char SSJSPOT('G');
+const char REPLAY('R');
 
 // defining the command letters to move the spot on the maze
 const int  UP(72);				// up arrow
@@ -49,7 +50,7 @@ const int  DOWN(80); 			// down arrow
 const int  RIGHT(77);			// right arrow
 const int  LEFT(75);			// left arrow
 
-// defining the other command letters
+								// defining the other command letters
 const char QUIT('Q');			// to end the game
 const char FREEZE('F');			// Cheat command 1, to freeze the zombies in place.
 const char EXTERMINATE('X');	// Cheat command 2, eliminate all zombies
@@ -90,6 +91,7 @@ struct Difficulty {
 	int maxNumberOfZombies;
 	int lengthOfMagicProtection;
 };
+
 struct GameData {					// Default game variable state, can be constructed differently for difficulties later.
 	Difficulty currentLevel;
 	int lives;						// Represents lives remaining in game. Set to 3 initially to match basic version.
@@ -101,6 +103,10 @@ struct GameData {					// Default game variable state, can be constructed differe
 	bool zombiesTerminated = false;
 	bool gameEnded = false;
 	bool levelComplete = false;
+
+	// Replay data
+	vector<GameSpaceManager> replayData;	// Stores state of the game space at each interval
+	bool justReplayed = false;
 };
 
 
@@ -120,7 +126,7 @@ int main() {
 	// Function declarations (prototypes)
 	void displayNameEntryScreen();
 	void initialiseGame(GameSpaceManager& gsm, GameObjectManager& gom, GameData& gameData);
-	void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const GameData& gameData, const string& mess, const string& endGameMessage);
+	void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, GameData& gameData, const string& mess, const string& endGameMessage);
 	bool wantsToQuit(const int key);
 	int  getKeyPress();
 	bool isArrowKey(const int k);
@@ -220,13 +226,14 @@ void initialiseDifficultyVariables(GameData& gameData, const Difficulty& chosenD
 // Precondition: GSM, GOM and GameData exist
 // Postcondition: Grid is set up with the maze layout and all objects placed
 void initialiseGame(GameSpaceManager& gsm, GameObjectManager& gom, GameData& gameData) {// initialise grid and place spot in middle
-	// Function declarations (prototypes)
+																						// Function declarations (prototypes)
 	void setInitialMazeStructure(char maze[][SIZEX]);
 	void setMaze(char g[][SIZEX], const char b[][SIZEX]);
 	void setItemInitialCoordinates(const char itemSymbol, Item& item, char[][SIZEX]);
 	void updateGrid(GameSpaceManager& gsm, GameObjectManager& gom);
 	void setMultipleItems(const char itemSymbol, int maxNumOfItems, vector<Item>& itemStore, char grid[][SIZEX]);
 	void setZombies(char grid[][SIZEX], vector<Item>& zombies, GameData& gameData);
+	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
 	assert(true);
 
@@ -237,6 +244,8 @@ void initialiseGame(GameSpaceManager& gsm, GameObjectManager& gom, GameData& gam
 	setMultipleItems(HOLE, gameData.currentLevel.maxNumberOfHoles, gom.holes, gsm.grid);	// Place the holes second
 	setMultipleItems(PILL, gameData.currentLevel.maxPills, gom.pills, gsm.grid);			// Place the pills
 	setItemInitialCoordinates(SPOT, gom.spot, gsm.grid);					// Finally place Spot
+	gameData.replayData.clear();											// Flush out irrelevant replay data
+	gameData.replayData.push_back(gsm);										// Add initial state to replay data
 }
 
 // Generate random co-ordinates within the grid bounds and place object there.
@@ -285,24 +294,24 @@ void setInitialMazeStructure(char maze[][SIZEX]) {
 	// set the position of the walls in the maze
 	// initialise maze configuration
 	char initialMaze[SIZEY][SIZEX] = {	// local array to store the maze structure
-		{ '#', '#', '#', '#', '#', '#', '#', '#', '#', '#' },
-		{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
-		{ '#', ' ', ' ', '#', ' ', ' ', '#', ' ', ' ', '#' },
-		{ '#', ' ', ' ', '#', ' ', ' ', '#', ' ', ' ', '#' },
-		{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
-		{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
-		{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
-		{ '#', '#', '#', '#', '#', '#', '#', '#', '#', '#' } };
+	{ '#', '#', '#', '#', '#', '#', '#', '#', '#', '#' },
+	{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
+	{ '#', ' ', ' ', '#', ' ', ' ', '#', ' ', ' ', '#' },
+	{ '#', ' ', ' ', '#', ' ', ' ', '#', ' ', ' ', '#' },
+	{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
+	{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
+	{ '#', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '#' },
+	{ '#', '#', '#', '#', '#', '#', '#', '#', '#', '#' } };
 	// with '#' for wall, ' ' for tunnel, etc.
 	// copy into maze structure with appropriate symbols
 	for (int row(0); row < SIZEY; ++row)
-		for (int col(0); col < SIZEX; ++col)
-			switch (initialMaze[row][col])
-			{
-				// not a direct copy, in case the symbols used change
-				case '#': maze[row][col] = WALL; break;
-				case ' ': maze[row][col] = TUNNEL; break;
-			}
+	for (int col(0); col < SIZEX; ++col)
+	switch (initialMaze[row][col])
+	{
+	// not a direct copy, in case the symbols used change
+	case '#': maze[row][col] = WALL; break;
+	case ' ': maze[row][col] = TUNNEL; break;
+	}
 	*/
 	for (int row(0); row < SIZEY; ++row)
 		for (int col(0); col < SIZEX; ++col)
@@ -325,7 +334,7 @@ void setZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData& gameDat
 	int xDef[4] = { 1, 1, SIZEX - 2, SIZEX - 2 }; // Position defaults x co-ord
 	int yDef[4] = { 1, SIZEY - 2, SIZEY - 2, 1 }; // Position defaults y co-ord
 
-	// Function body
+												  // Function body
 	for (int i = 0; i < gameData.currentLevel.maxNumberOfZombies; i++) {
 		Item z1;
 		z1.defaultLoc.x = xDef[i];
@@ -354,6 +363,7 @@ void spawnZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData& data)
 	}
 	data.zombiesLeft = 4;
 }
+
 #pragma endregion
 
 #pragma region update grid state
@@ -452,10 +462,10 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gam
 	bool playerMoved = true;								// Bool to confirm whether or not player moved, so zombies can be moved.	
 	int dx(0), dy(0);										// X and Y values for applying movement to objects.
 
-	// Function body
+															// Function body
 	setKeyDirection(key, dx, dy);							// calculate direction of movement for given key
 	switch (g[gom.spot.currentLoc.y + dy][gom.spot.currentLoc.x + dx]) {			// check new target position in grid and update game data (incl. spot coordinates) if move is possible
-		// ...depending on what's on the target position in grid...
+																					// ...depending on what's on the target position in grid...
 	case TUNNEL:		// can move
 		gom.spot.currentLoc.y += dy;	// go in that Y direction
 		gom.spot.currentLoc.x += dx;	// go in that X direction
@@ -530,7 +540,7 @@ void moveZombies(const char grid[][SIZEX], GameObjectManager& gom, GameData& dat
 			if (gom.zombies.at(i).currentLoc.x != gom.spot.currentLoc.x || gom.zombies.at(i).currentLoc.y != gom.spot.currentLoc.y) { // Only does all checks if coordinates are not equal
 
 				if (data.magicProtected <= 0) { // Magic protection check! 
-					// X MOVEMENT				
+												// X MOVEMENT				
 					if (gom.zombies.at(i).currentLoc.x > gom.spot.currentLoc.x) { // Move towards Spot if Spot X is to lower
 						gom.zombies.at(i).currentLoc.x--;
 					}
@@ -724,7 +734,7 @@ void spotHitZombies(GameObjectManager& gom, GameData& gameData, string& endGameM
 // ----- process inputs
 // ---------------------------------------------------------------------------
 void setKeyDirection(const int key, int& dx, int& dy) { // calculate direction indicated by key
-	// Function declarations (prototypes)
+														// Function declarations (prototypes)
 	bool isArrowKey(const int k);
 
 	assert(isArrowKey(key));
@@ -784,8 +794,9 @@ void getUserName(string& name) {
 	int maxChars = 20;										// Maximum length of permitted name
 	bool valid = true;										// Flag for name validity, assumed true initially
 
-	// Function body
+															// Function body
 	cin >> setw(maxChars) >> name;							// Get input from user, using cin to avoid whitespace characters, setting max length with setw.
+	cin.ignore(INT_MAX, '\n');
 	int i = 0;
 	while (valid && (i < name.length())) {					// Loop while the name is still considered valid, and end of string hasn't been reached.
 		if (!(name.at(i) >= 'A') && (name.at(i) <= 'z')) {	// Check if character is not a valid letter a-z including capitals.
@@ -806,6 +817,7 @@ void getUserDifficultyChoice(int& desiredDifficulty) {
 
 	// Function body 
 	cin >> userInput;					// Get input from user, using cin.
+	cin.ignore(INT_MAX, '\n');
 	int i = 0;
 	while (valid && (i < userInput.length())) {					// Loop while the name is still considered valid, and end of string hasn't been reached.
 		if (!(userInput.at(i) >= '0') && (userInput.at(i) <= '9')) {	// Check if character is not a valid letter a-z including capitals.
@@ -826,6 +838,7 @@ void commandCheck(int key, string& message, string& endGameMessage, GameSpaceMan
 	void freezeCheat(string& message, GameData& gameData);
 	void exterminateCheat(string& message, string& endGameMessage, GameData& gameData, GameObjectManager& gom, GameSpaceManager& gsm);
 	void eatPillCheat(string& message, string& endGameMessage, GameData& gameData, vector<Item>& pillList, GameSpaceManager& gsm);
+	void replay(GameData& gameData);
 
 	switch (key) {
 	case FREEZE:
@@ -840,9 +853,37 @@ void commandCheck(int key, string& message, string& endGameMessage, GameSpaceMan
 	case QUIT:
 		message = "GAME STOPPED";
 		break;
+	case REPLAY:
+		replay(gameData);
+		break;
 	default:
 		message = "INVALID KEY!";					// set 'Invalid key' message if keypress not recognised as valid input.
 	}
+}
+
+// Displays a replay of moves so far in the level
+// IN: Struct of the game's data
+// OUT:
+// Precondition: There is at least one frame stored in the replay data
+// Postcondition: User will have been shown a display of their (and the zombies') moves thus far in the level
+void replay(GameData& gameData)
+{
+	assert(gameData.replayData.size() > 0);
+
+	void paintGrid(const GameSpaceManager& gsm);
+	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
+
+	// Function body
+	showMessage(clBlack, clYellow, 40, 6, "Showing Replay             ");
+
+	for (int i = 0; i < gameData.replayData.size(); i++)
+	{
+		paintGrid(gameData.replayData.at(i));	// Displays play data at the frame in question
+		Sleep(200);								// Waits for 1/5 second before showing the next frame
+	}
+	gameData.justReplayed = true;
+	showMessage(clBlack, clYellow, 40, 6, "Replay over! Press Enter to resume");
+	cin.ignore(INT_MAX, '\n');
 }
 #pragma endregion
 
@@ -987,10 +1028,11 @@ void displayControlsMenu(const WORD firstColour, const WORD secondColour, const 
 
 	showMessage(firstColour, secondColour, x, y, "TO MOVE USE KEYBOARD ARROWS ");
 	showMessage(firstColour, secondColour, x, y + 1, "TO QUIT ENTER 'Q'           ");
-	showMessage(firstColour, secondColour, x, y + 3, "CHEATS                        ");
-	showMessage(firstColour, secondColour, x, y + 4, "TO FREEZE ZOMBIES PRESS '" + tostring(FREEZE) + "'   ");
-	showMessage(firstColour, secondColour, x, y + 5, "TO KILL ALL ZOMBIES PRESS '" + tostring(EXTERMINATE) + "' ");
-	showMessage(firstColour, secondColour, x, y + 6, "TO EAT ALL PILLS PRESS '" + tostring(EAT) + "'    ");
+	showMessage(firstColour, secondColour, x, y + 2, "TO SEE A REPLAY PRESS '" + tostring(REPLAY) + "'   ");
+	showMessage(firstColour, secondColour, x, y + 4, "CHEATS                        ");
+	showMessage(firstColour, secondColour, x, y + 5, "TO FREEZE ZOMBIES PRESS '" + tostring(FREEZE) + "'   ");
+	showMessage(firstColour, secondColour, x, y + 6, "TO KILL ALL ZOMBIES PRESS '" + tostring(EXTERMINATE) + "' ");
+	showMessage(firstColour, secondColour, x, y + 7, "TO EAT ALL PILLS PRESS '" + tostring(EAT) + "'    ");
 }
 
 // Entry screen display
@@ -1057,7 +1099,7 @@ void displayEndGameMessages(const string& endGameMessage) {
 	showMessage(clGrey, clRed, 40, 25, endGameMessage);
 }
 
-void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const GameData& gameData, const string& mess, const string& endGameMessage)
+void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, GameData& gameData, const string& mess, const string& endGameMessage)
 {
 	// Function declarations (prototypes)
 	void displayPlayerInformation(const PlayerInfo& playerData, int x, int y);
@@ -1076,7 +1118,7 @@ void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const 
 	SelectBackColour(clGrey);
 	Clrscr();														// Using included libraries, clears the game screen - sets it all grey.
 
-	// display game title
+																	// display game title
 	showMessage(clDarkGreen, clGreen, 0, 0, "___SPOT AND ZOMBIES GAME___");
 	showMessage(clYellow, clBlue, 40, 0, "FoP Task 1c: February 2018");
 	displayTimeAndDate(clYellow, clBlue, 40, 1);
@@ -1092,6 +1134,17 @@ void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const 
 		displayEndGameMessages(endGameMessage);
 	}
 	paintGrid(gsm);									// display grid contents
+
+	if (!gameData.justReplayed)
+	{
+		// Add new replay data if the player hasn't just displayed a replay
+		gameData.replayData.push_back(gsm);
+	}
+	else
+	{
+		// Remove replay flag so replay data continues to be updated
+		gameData.justReplayed = false;
+	}
 }
 
 void paintGrid(const GameSpaceManager& gsm) {
