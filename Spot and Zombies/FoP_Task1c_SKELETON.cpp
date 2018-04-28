@@ -233,6 +233,7 @@ void initialiseGame(GameSpaceManager& gsm, GameObjectManager& gom, GameData& gam
 	void updateGrid(GameSpaceManager& gsm, GameObjectManager& gom);
 	void setMultipleItems(const char itemSymbol, int maxNumOfItems, vector<Item>& itemStore, char grid[][SIZEX]);
 	void setZombies(char grid[][SIZEX], vector<Item>& zombies, GameData& gameData);
+	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
 	assert(true);
 
@@ -795,6 +796,7 @@ void getUserName(string& name) {
 
 															// Function body
 	cin >> setw(maxChars) >> name;							// Get input from user, using cin to avoid whitespace characters, setting max length with setw.
+	cin.ignore(INT_MAX, '\n');
 	int i = 0;
 	while (valid && (i < name.length())) {					// Loop while the name is still considered valid, and end of string hasn't been reached.
 		if (!(name.at(i) >= 'A') && (name.at(i) <= 'z')) {	// Check if character is not a valid letter a-z including capitals.
@@ -815,6 +817,7 @@ void getUserDifficultyChoice(int& desiredDifficulty) {
 
 	// Function body 
 	cin >> userInput;					// Get input from user, using cin.
+	cin.ignore(INT_MAX, '\n');
 	int i = 0;
 	while (valid && (i < userInput.length())) {					// Loop while the name is still considered valid, and end of string hasn't been reached.
 		if (!(userInput.at(i) >= '0') && (userInput.at(i) <= '9')) {	// Check if character is not a valid letter a-z including capitals.
@@ -879,6 +882,8 @@ void replay(GameData& gameData)
 		Sleep(200);								// Waits for 1/5 second before showing the next frame
 	}
 	gameData.justReplayed = true;
+	showMessage(clBlack, clYellow, 40, 6, "Replay over! Press Enter to resume");
+	cin.ignore(INT_MAX, '\n');
 }
 #pragma endregion
 
@@ -1139,7 +1144,6 @@ void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, GameDa
 	{
 		// Remove replay flag so replay data continues to be updated
 		gameData.justReplayed = false;
-		showMessage(clBlack, clYellow, 40, 6, "Replay over!               ");
 	}
 }
 
