@@ -106,7 +106,7 @@ struct GameData {					// Default game variable state, can be constructed differe
 
 	// Replay data
 	vector<GameSpaceManager> replayData;	// Stores state of the game space at each interval
-	bool displayingReplay = false;			// If the game is displaying a replay
+	bool justReplayed = false;
 };
 
 
@@ -835,6 +835,7 @@ void commandCheck(int key, string& message, string& endGameMessage, GameSpaceMan
 	void freezeCheat(string& message, GameData& gameData);
 	void exterminateCheat(string& message, string& endGameMessage, GameData& gameData, GameObjectManager& gom, GameSpaceManager& gsm);
 	void eatPillCheat(string& message, string& endGameMessage, GameData& gameData, vector<Item>& pillList, GameSpaceManager& gsm);
+	void replay(GameData& gameData);
 
 	switch (key) {
 	case FREEZE:
@@ -850,12 +851,34 @@ void commandCheck(int key, string& message, string& endGameMessage, GameSpaceMan
 		message = "GAME STOPPED";
 		break;
 	case REPLAY:
-		message = "REPLAY";
-		gameData.displayingReplay = true;
+		replay(gameData);
 		break;
 	default:
 		message = "INVALID KEY!";					// set 'Invalid key' message if keypress not recognised as valid input.
 	}
+}
+
+// Displays a replay of moves so far in the level
+// IN: Struct of the game's data
+// OUT:
+// Precondition: There is at least one frame stored in the replay data
+// Postcondition: User will have been shown a display of their (and the zombies') moves thus far in the level
+void replay(GameData& gameData)
+{
+	assert(gameData.replayData.size() > 0);
+
+	void paintGrid(const GameSpaceManager& gsm);
+	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
+
+	// Function body
+	showMessage(clBlack, clYellow, 40, 6, "Showing Replay             ");
+
+	for (int i = 0; i < gameData.replayData.size(); i++)
+	{
+		paintGrid(gameData.replayData.at(i));	// Displays play data at the frame in question
+		Sleep(200);								// Waits for 1/5 second before showing the next frame
+	}
+	gameData.justReplayed = true;
 }
 #pragma endregion
 
@@ -1105,23 +1128,19 @@ void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, GameDa
 	{
 		displayEndGameMessages(endGameMessage);
 	}
-
-	// Paints each frame of the grid's state if the player has asked for a replay
-	if (gameData.displayingReplay)
-	{
-		// As things stand, replay state cannot be left until it is over
-		// NOTE: If player provides input, it stacks up in buffer and bursts out when control returns, could do with a way to fix this
-		for (int i = 0; i < gameData.replayData.size(); i++)
-		{
-			paintGrid(gameData.replayData.at(i));	// Displays play data at the frame in question
-			Sleep(200);								// Waits for 1/5 second before showing the next frame
-		}
-		gameData.displayingReplay = false;
-		showMessage(clBlack, clYellow, 40, 6, "Replay Over!");
-	}
-
 	paintGrid(gsm);									// display grid contents
-	gameData.replayData.push_back(gsm);				// add new replay data
+
+	if (!gameData.justReplayed)
+	{
+		// Add new replay data if the player hasn't just displayed a replay
+		gameData.replayData.push_back(gsm);
+	}
+	else
+	{
+		// Remove replay flag so replay data continues to be updated
+		gameData.justReplayed = false;
+		showMessage(clBlack, clYellow, 40, 6, "Replay over!               ");
+	}
 }
 
 void paintGrid(const GameSpaceManager& gsm) {
