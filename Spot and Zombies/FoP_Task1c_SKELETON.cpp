@@ -86,6 +86,12 @@ struct GameData {					// Default game variable state, can be constructed differe
 	bool gameEnded = false;
 };
 
+struct Score
+{
+	string name;
+	int score;
+};
+
 // TODO Add a difficulty struct with max number of items - Advanced tasks!
 
 // ---------------------------------------------------------------------------
@@ -800,6 +806,40 @@ void showGroupMembers(const WORD backColour, const WORD textColour, int x, int y
 	showMessage(backColour, textColour, x, y + 3, "Nico Caruana    27022205");
 }
 
+void displayHighscores(const WORD backColour, const WORD textColour, int x, int y)
+{
+	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
+
+	showMessage(backColour, textColour, x, y, "--------------");
+	showMessage(backColour, textColour, x, y + 1, "| HIGHSCORES |");
+	showMessage(backColour, textColour, x, y + 2, "--------------");
+
+	x++;
+	y += 3;
+
+	ifstream fin("saves/highscores.txt");
+	if (fin.fail())
+	{
+		ofstream fout("saves/highscores.txt");
+		for (int i = 0; i < 10; i++)
+			fout << "Player 0\n";
+		fout.close();
+		fin = ifstream("saves/highscores.txt");
+	}
+
+	vector<Score> highscores;
+	string line;
+	while (getline(fin, line))
+	{
+		string name = line.substr(0, line.find(' '));
+		int score = stoi(line.substr(line.find(' ') + 1, line.length()));
+		string modifiedLine = name + '\t' + to_string(score);
+		showMessage(backColour, textColour, x, y, modifiedLine);
+		y++;
+	}
+	fin.close();
+}
+
 // Display a request for the user to enter username from a set starting point in a defined colour.
 // User Entry text is then changed to a red colour.
 void displayNameRequest(const WORD backColour, const WORD textColour, int x, int y) {
@@ -828,11 +868,11 @@ void displayControlsMenu(const WORD firstColour, const WORD secondColour, const 
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
 	showMessage(firstColour, secondColour, x, y, "TO MOVE USE KEYBOARD ARROWS ");
-	showMessage(firstColour, secondColour, x, y+1, "TO QUIT ENTER 'Q'           ");
-	showMessage(firstColour, secondColour, x, y+3, "CHEATS                        ");
-	showMessage(firstColour, secondColour, x, y+4, "TO FREEZE ZOMBIES PRESS '" + tostring(FREEZE) + "'   ");
-	showMessage(firstColour, secondColour, x, y+5, "TO KILL ALL ZOMBIES PRESS '" + tostring(EXTERMINATE) + "' ");
-	showMessage(firstColour, secondColour, x, y+6, "TO EAT ALL PILLS PRESS '" + tostring(EAT) + "'    ");
+	showMessage(firstColour, secondColour, x, y + 1, "TO QUIT ENTER 'Q'           ");
+	showMessage(firstColour, secondColour, x, y + 3, "CHEATS                        ");
+	showMessage(firstColour, secondColour, x, y + 4, "TO FREEZE ZOMBIES PRESS '" + tostring(FREEZE) + "'   ");
+	showMessage(firstColour, secondColour, x, y + 5, "TO KILL ALL ZOMBIES PRESS '" + tostring(EXTERMINATE) + "' ");
+	showMessage(firstColour, secondColour, x, y + 6, "TO EAT ALL PILLS PRESS '" + tostring(EAT) + "'    ");
 }
 
 // Entry screen display
@@ -840,6 +880,7 @@ void displayEntryScreen(PlayerInfo& playerData) {
 	void showGameTitle(const WORD backColour, const WORD textColour, int x, int y);
 	void showGroupMembers(const WORD backColour, const WORD textColour, int x, int y);
 	void displayTimeAndDate(const WORD firstColour, const WORD secondColour, const int x, const int y);
+	void displayHighscores(const WORD backColour, const WORD textColour, int x, int y);
 	void displayNameRequest(const WORD backColour, const WORD textColour, int x, int y);
 	void getUserName(string& name);
 	void checkAndLoadUserSavedData(const string& userName, PlayerInfo& playerData);
@@ -854,9 +895,10 @@ void displayEntryScreen(PlayerInfo& playerData) {
 	showGameTitle(clDarkGrey, clYellow, 10, 6);
 	showGroupMembers(clDarkGrey, clYellow, 10, 10);
 	displayTimeAndDate(clDarkGrey, clYellow, 40, 1);
+	displayHighscores(clDarkGrey, clYellow, 45, 6);
 	displayNameRequest(clDarkGrey, clYellow, 10, 20);
 	getUserName(name);
-	while (name == ""){
+	while (name == "") {
 		SelectBackColour(clBlack); // Doing a full screen refresh here, setting the background colour to black
 		Clrscr();
 		showGameTitle(clDarkGrey, clYellow, 10, 6);
@@ -893,10 +935,10 @@ void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, const 
 
 	// print auxiliary messages if any
 	showMessage(clBlack, clYellow, 40, 6, mess);	// display current message
-	
+
 	displayControlsMenu(clRed, clGreen, 40, 8);		// display menu options available
 	displayPlayerInformation(playerData, 40, 16);
-	displayGameInformation(gameData, 40, 19);	
+	displayGameInformation(gameData, 40, 19);
 	paintGrid(gsm);									// display grid contents
 }
 
@@ -987,16 +1029,85 @@ void checkAndLoadUserSavedData(const string& userName, PlayerInfo& playerData) {
 // Records the playername and a new high score into a text file.
 // IN: PlayerInfo struct containing playerName and previous Highscore, newHighScore integer
 // OUT:
-void saveUserData(const PlayerInfo& playerData, const int newHighScore) {
+void saveUserData(const PlayerInfo& playerData, const int newHighScore)
+{
+	vector<Score> loadHighscores();
+	bool checkHighscore(const vector<Score>& highscores, const int);
+	void sortHighscores(vector<Score>& highscores);
+	void saveHighscores(vector<Score>& highscores);
+
 	ofstream fout;
 	fout.open("saves/" + playerData.playerName + ".txt");
-	if (!fout.fail()) {
+	if (!fout.fail())
+	{
 		fout << playerData.playerName << " " << newHighScore;
 	}
-	else {
+	else
+	{
 		//HACK Throw an error- Simple cout for now, ideas for a better way appreciated.
 		cout << "Error saving data! Highscore not recorded!";
 	}
+
+	vector<Score> highscores = loadHighscores();
+	if (checkHighscore(highscores, newHighScore))
+	{
+		highscores.at(9).name = playerData.playerName;
+		highscores.at(9).score = newHighScore;
+	}
+
+	sortHighscores(highscores);
+	saveHighscores(highscores);
+
+	fout.close();
+}
+
+vector<Score> loadHighscores()
+{
+	ifstream fin("saves/highscores.txt");
+
+	vector<Score> highscores;
+	string line;
+	while (getline(fin, line))
+	{
+		string name = line.substr(0, line.find(' '));
+		int score = stoi(line.substr(line.find(' ') + 1, line.length()));
+		Score thisScore{ name, score };
+		highscores.push_back(thisScore);
+	}
+	fin.close();
+
+	return highscores;
+}
+
+bool checkHighscore(const vector<Score>& highscores, const int newHighscore)
+{
+	return newHighscore > highscores.at(9).score;
+}
+
+void sortHighscores(vector<Score>& highscores)
+{
+	for each (Score thisScore in highscores)
+	{
+		for (int i = 0; i < 10 - 1; i++)
+		{
+			if (highscores.at(i).score < highscores.at(i + 1).score)
+			{
+				Score temp = highscores.at(i);
+				highscores.at(i) = highscores.at(i + 1);
+				highscores.at(i + 1) = temp;
+			}
+		}
+	}
+}
+
+void saveHighscores(vector<Score>& highscores)
+{
+	ofstream fout("saves/highscores.txt");
+	for each (Score thisScore in highscores)
+	{
+		fout << thisScore.name << ' ' << thisScore.score << endl;
+	}
+	fout.close();
 }
 
 // ---------------------------------------------------------------------------
