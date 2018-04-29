@@ -561,25 +561,24 @@ void moveZombies(const char grid[][SIZEX], GameObjectManager& gom, GameData& dat
 	for (int i = 0; i < 4; i++) {
 		if (gom.zombies.at(i).active) { // Only moves if alive			
 			if (gom.zombies.at(i).currentLoc.x != gom.spot.currentLoc.x || gom.zombies.at(i).currentLoc.y != gom.spot.currentLoc.y) { // Only does all checks if coordinates are not equal
-
+				int zx, zy;
 				if (data.magicProtected <= 0) { // Magic protection check! 
 												// X MOVEMENT				
-					if (gom.zombies.at(i).currentLoc.x > gom.spot.currentLoc.x) { // Move towards Spot if Spot X is to lower
-						gom.zombies.at(i).currentLoc.x--;
+					if (gom.zombies.at(i).currentLoc.x == gom.spot.currentLoc.x) {
+						zx = 0;
 					}
-					else if (gom.zombies.at(i).currentLoc.x < gom.spot.currentLoc.x) { // Move towards Spot if Spot X is higher
-						gom.zombies.at(i).currentLoc.x++;
+					else {
+						zx = (gom.zombies.at(i).currentLoc.x > gom.spot.currentLoc.x) ? -1 : 1;
 					}
-					// Y MOVEMENT
-					if (gom.zombies.at(i).currentLoc.y > gom.spot.currentLoc.y) { // Move towards Spot if Spot Y is lower														
-						gom.zombies.at(i).currentLoc.y--;
+					if (gom.zombies.at(i).currentLoc.y == gom.spot.currentLoc.y) {
+						zy = 0;
 					}
-					else if (gom.zombies.at(i).currentLoc.y < gom.spot.currentLoc.y) { // Move towards Spot if Spot Y is higher
-						gom.zombies.at(i).currentLoc.y++;
+					else {
+						zy = (gom.zombies.at(i).currentLoc.y > gom.spot.currentLoc.y) ? -1 : 1;
 					}
 				}
 				else { // Zombie run away movement
-					int zx, zy;
+
 					if (gom.zombies.at(i).currentLoc.x == gom.spot.currentLoc.x) {
 						zx = 0;
 					}
@@ -592,10 +591,11 @@ void moveZombies(const char grid[][SIZEX], GameObjectManager& gom, GameData& dat
 					else {
 						zy = (gom.zombies.at(i).currentLoc.y > gom.spot.currentLoc.y) ? 1 : -1;
 					}
-					if (grid[gom.zombies.at(i).currentLoc.y + zy][gom.zombies.at(i).currentLoc.x + zx] != WALL) {
-						gom.zombies.at(i).currentLoc.y += zy;
-						gom.zombies.at(i).currentLoc.x += zx;
-					}
+
+				}
+				if (grid[gom.zombies.at(i).currentLoc.y + zy][gom.zombies.at(i).currentLoc.x + zx] != WALL) {
+					gom.zombies.at(i).currentLoc.y += zy;
+					gom.zombies.at(i).currentLoc.x += zx;
 				}
 			}
 		}
