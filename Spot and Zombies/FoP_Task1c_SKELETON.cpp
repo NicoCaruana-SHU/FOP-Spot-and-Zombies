@@ -94,7 +94,6 @@ struct Difficulty {
 
 struct GameData {					// Default game variable state, can be constructed differently for difficulties later.
 	Difficulty currentLevel;
-	bool useCustomMaze = false;
 	int lives;						// Represents lives remaining in game. Set to 3 initially to match basic version.
 	int numberOfPillsLeft;
 	int zombiesLeft;
