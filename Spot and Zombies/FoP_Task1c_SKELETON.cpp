@@ -94,6 +94,7 @@ struct Difficulty {
 
 struct GameData {					// Default game variable state, can be constructed differently for difficulties later.
 	Difficulty currentLevel;
+	bool useCustomMaze = false;
 	int lives;						// Represents lives remaining in game. Set to 3 initially to match basic version.
 	int numberOfPillsLeft;
 	int zombiesLeft;
@@ -125,7 +126,7 @@ vector<Difficulty> difficultyLevels{ easy, normal, hard };
 int main() {
 	// Function declarations (prototypes)
 	void displayNameEntryScreen();
-	void initialiseGame(GameSpaceManager& gsm, GameObjectManager& gom, GameData& gameData);
+	void initialiseGame(GameSpaceManager& gsm, GameObjectManager& gom, GameData& gameData, bool useCustomMaze);
 	void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, GameData& gameData, const string& mess, const string& endGameMessage);
 	bool wantsToQuit(const int key);
 	int  getKeyPress();
@@ -136,13 +137,15 @@ int main() {
 	void gameOver(const PlayerInfo& playerData, const GameData& gameData);
 	void endProgram();
 
-	void getUserName(string& name);
+	void getUserCharacterInput(string& userInput, int maxLength);
 	void getUserDifficultyChoice(int& desiredDifficulty);
 	void checkAndLoadUserSavedData(const string& userName, PlayerInfo& playerData);
 	void initialiseDifficultyVariables(GameData& gameData, const Difficulty& chosenDifficulty);
 	void displayNameEntryErrorScreen();
 	void displayLevelSelectScreen();
 	void displayLevelSelectErrorScreen();
+	void displayMazeSelectScreen();
+	void displayMazeSelectErrorScreen();
 
 	// local variable declarations
 	PlayerInfo playerData;
@@ -150,17 +153,19 @@ int main() {
 	string endGameMessage = "";
 	string name = "";
 	int desiredDifficulty = -1;
+	bool useCustomMaze = false;
 	bool levelComplete = false;
+	int maxUserNameLength = 20;
 
 	// Function body
 	Seed();																			// seed the random number generator
 	SetConsoleTitle("Spot and Zombies Game - FoP 2017-18");
 	displayNameEntryScreen();
-	getUserName(name);
+	getUserCharacterInput(name, maxUserNameLength);
 	while (name == "")
 	{
 		displayNameEntryErrorScreen();
-		getUserName(name);
+		getUserCharacterInput(name, maxUserNameLength);
 	}
 
 	checkAndLoadUserSavedData(name, playerData);
@@ -173,6 +178,19 @@ int main() {
 		getUserDifficultyChoice(desiredDifficulty);
 	}
 
+	displayMazeSelectScreen();
+	string mazeChoice;
+	getUserCharacterInput(mazeChoice, 1);
+	while ((toupper(mazeChoice.front()) != 'Y') && (toupper(mazeChoice.front()) != 'N'))
+	{
+		displayMazeSelectErrorScreen();
+		getUserCharacterInput(mazeChoice, 1);
+	}
+	if ((toupper(mazeChoice.front()) == 'Y'))
+	{
+		useCustomMaze = true;
+	}
+
 	do
 	{
 		GameSpaceManager gsm;
@@ -181,7 +199,7 @@ int main() {
 
 		initialiseDifficultyVariables(gameData, difficultyLevels.at(desiredDifficulty - 1));
 
-		initialiseGame(gsm, gom, gameData);												// initialise grid (incl. walls and spot)	
+		initialiseGame(gsm, gom, gameData, useCustomMaze);												// initialise grid (incl. walls and spot)	
 		paintGame(gsm, playerData, gameData, message, endGameMessage);					// display game info, modified grid and messages
 		int key;																		// current key selected by player
 		do {
@@ -225,7 +243,7 @@ void initialiseDifficultyVariables(GameData& gameData, const Difficulty& chosenD
 // OUT:
 // Precondition: GSM, GOM and GameData exist
 // Postcondition: Grid is set up with the maze layout and all objects placed
-void initialiseGame(GameSpaceManager& gsm, GameObjectManager& gom, GameData& gameData) {// initialise grid and place spot in middle
+void initialiseGame(GameSpaceManager& gsm, GameObjectManager& gom, GameData& gameData, bool useCustomMaze) {// initialise grid and place spot in middle
 																						// Function declarations (prototypes)
 	void setInitialMazeStructure(char maze[][SIZEX]);
 	void setMaze(char g[][SIZEX], const char b[][SIZEX]);
@@ -234,11 +252,17 @@ void initialiseGame(GameSpaceManager& gsm, GameObjectManager& gom, GameData& gam
 	void setMultipleItems(const char itemSymbol, int maxNumOfItems, vector<Item>& itemStore, char grid[][SIZEX]);
 	void setZombies(char grid[][SIZEX], vector<Item>& zombies, GameData& gameData);
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
+	void loadMazeConfiguration(char maze[][SIZEX]);;
 
 	assert(true);
-
-	// Function body
+	if (useCustomMaze)
+	{
+		loadMazeConfiguration(gsm.maze);
+	}
+	else {
 	setInitialMazeStructure(gsm.maze);										// initialise maze
+	}
+	// Function body
 	setMaze(gsm.grid, gsm.maze);											// Create first empty game frame
 	setZombies(gsm.grid, gom.zombies, gameData);							// Place zombies first so that nothing spawns over the corners.
 	setMultipleItems(HOLE, gameData.currentLevel.maxNumberOfHoles, gom.holes, gsm.grid);	// Place the holes second
@@ -787,25 +811,24 @@ bool wantsToQuit(const int key) {
 // OUT:
 // Precondition:
 // Postcondition: String will be filled with a valid username, or empty string if invalid characters entered.
-void getUserName(string& name) {
+void getUserCharacterInput(string& userInput, int maxLength) {
 	assert(true);
 
 	// Local variables
-	int maxChars = 20;										// Maximum length of permitted name
 	bool valid = true;										// Flag for name validity, assumed true initially
 
 															// Function body
-	cin >> setw(maxChars) >> name;							// Get input from user, using cin to avoid whitespace characters, setting max length with setw.
+	cin >> setw(maxLength) >> userInput;							// Get input from user, using cin to avoid whitespace characters, setting max length with setw.
 	cin.ignore(INT_MAX, '\n');
 	int i = 0;
-	while (valid && (i < name.length())) {					// Loop while the name is still considered valid, and end of string hasn't been reached.
-		if (!(name.at(i) >= 'A') && (name.at(i) <= 'z')) {	// Check if character is not a valid letter a-z including capitals.
+	while (valid && (i < userInput.length())) {					// Loop while the name is still considered valid, and end of string hasn't been reached.
+		if (!(userInput.at(i) >= 'A') && (userInput.at(i) <= 'z')) {	// Check if character is not a valid letter a-z including capitals.
 			valid = false;									// Flag name invalid if invalid character found
 		}
 		++i;												// Increment counter to continue iterating through string.
 	}
 	if (!valid) {											// If an invalid character has been found, reset the string to empty. 
-		name = "";
+		userInput = "";
 	}
 }
 
@@ -1007,6 +1030,12 @@ void displayLevelRequest(const WORD backColour, const WORD textColour, int x, in
 	SelectTextColour(clGreen);
 }
 
+void displayCustomMazeRequest(const WORD backColour, const WORD textColour, int x, int y) {
+	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
+	showMessage(backColour, textColour, x, y, "Would you like to use a custom maze from file? (Y or N)");
+	SelectTextColour(clGreen);
+}
+
 void displayPlayerInformation(const PlayerInfo& playerData, int x, int y) {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
@@ -1063,8 +1092,9 @@ void displayNameEntryScreen() {
 }
 
 void displayNameEntryErrorScreen() {
-	void GetCurrentCursorPosition(CoOrd& currentScreenPosition);
 	void displayNameEntryScreen();
+	void GetCurrentCursorPosition(CoOrd& currentScreenPosition);
+	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
 	CoOrd currentScreenposition;
 	displayNameEntryScreen();
@@ -1082,8 +1112,9 @@ void displayLevelSelectScreen() {
 }
 
 void displayLevelSelectErrorScreen() {
-	void GetCurrentCursorPosition(CoOrd& currentScreenPosition);
 	void displayLevelSelectScreen();
+	void GetCurrentCursorPosition(CoOrd& currentScreenPosition);
+	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
 	CoOrd currentScreenposition;
 	displayLevelSelectScreen();
@@ -1092,6 +1123,28 @@ void displayLevelSelectErrorScreen() {
 	Gotoxy(currentScreenposition.x, currentScreenposition.y);
 	SelectTextColour(clGreen);
 }
+
+void displayMazeSelectScreen() {
+	void displayEntryScreen();
+	void displayCustomMazeRequest(const WORD backColour, const WORD textColour, int x, int y);
+
+	displayEntryScreen();
+	displayCustomMazeRequest(clDarkGrey, clYellow, 10, 20);
+}
+
+void displayMazeSelectErrorScreen() {
+	void displayMazeSelectScreen();
+	void GetCurrentCursorPosition(CoOrd& currentScreenPosition);
+	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
+
+	CoOrd currentScreenposition;
+	displayMazeSelectScreen();
+	GetCurrentCursorPosition(currentScreenposition);
+	showMessage(clDarkGrey, clRed, 10, 22, "Invalid entry, must enter 'Y' or 'N'"); // TODO Could make this scale dependant on number of levels.
+	Gotoxy(currentScreenposition.x, currentScreenposition.y);
+	SelectTextColour(clGreen);
+}
+
 
 void displayEndGameMessages(const string& endGameMessage) {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
@@ -1261,6 +1314,37 @@ void saveUserData(const PlayerInfo& playerData, const int newHighScore) {
 		cout << "Error saving data! Highscore not recorded!";
 	}
 }
+
+void loadMazeConfiguration(char maze[][SIZEX]) {
+	ifstream fin;
+	fin.open("mazes/mazeLayout.txt", ios::in);
+	if (!fin.fail())
+	{
+		for (size_t i = 0; i < SIZEY; i++)
+		{
+			string s;
+			getline(fin, s);
+			for (size_t j = 0; j < s.length(); j++)
+			{
+				char symbol;
+				if (s.at(j) == '#')
+				{
+					symbol = WALL;
+				}
+				else {
+					symbol = TUNNEL;
+				}
+				maze[i][j] = symbol;
+			}
+		}
+	}
+	else {
+		cout << "Error loading maze!";
+	}
+	fin.close();
+}
+
+
 #pragma endregion
 
 #pragma region time functions
