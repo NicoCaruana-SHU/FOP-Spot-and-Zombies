@@ -106,7 +106,7 @@ struct GameData {					// Default game variable state, can be constructed differe
 
 	// Replay data
 	vector<GameSpaceManager> replayData;	// Stores state of the game space at each interval
-	bool justReplayed = false;
+	bool justReplayed = false;				// Tells the game not to save a frame if the user has just viewed a replay (see end of paintGame)
 };
 
 
@@ -239,7 +239,7 @@ void initialiseGame(GameSpaceManager& gsm, GameObjectManager& gom, GameData& gam
 	setMultipleItems(PILL, gameData.currentLevel.maxPills, gom.pills, gsm.grid);			// Place the pills
 	setItemInitialCoordinates(SPOT, gom.spot, gsm.grid);									// Finally place Spot
 	gameData.replayData.clear();															// Flush out irrelevant replay data
-	gameData.replayData.push_back(gsm);														// Add initial state to replay data
+	gameData.replayData.push_back(gsm);														// Add initial state of level to replay data
 }
 
 // Generate random co-ordinates within the grid bounds and place object there.
@@ -337,13 +337,13 @@ void setZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData& gameDat
 
 	// Function body
 	for (int i = 0; i < gameData.currentLevel.maxNumberOfZombies; i++) {
-		Item z1;
-		z1.defaultLoc.x = xDef[i];
+		Item z1;					// Temp store to be added to the vector
+		z1.defaultLoc.x = xDef[i];	// Sets default x+y position to that in relevant point of the above arrays
 		z1.defaultLoc.y = yDef[i];
 		z1.symbol = ZOMBIE;
-		resetZombieCoordinates(z1);
-		zombieStore.push_back(z1);
-		placeItem(grid, z1);
+		resetZombieCoordinates(z1);	// Sets the current coordinates for temp store to those just placed into defaultLoc.x/y
+		zombieStore.push_back(z1);	// Adds the temp zombie to the vector of zombies
+		placeItem(grid, z1);		// Places the finalised zombie into the grid
 	}
 }
 
@@ -351,7 +351,7 @@ void setZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData& gameDat
 // IN: Array representing the maze, vector representing (and referencing) all zombies
 // OUT:
 // Precondition: None
-// Postcondition: All zombies placed in their initial corners and alive. Number of zombies alive set in gamedata.
+// Postcondition: All zombies placed in their initial corners and alive. Number of zombies alive set to max for current level in gamedata.
 void spawnZombies(vector<Item>& zombieStore, GameData& data) {
 	// Function declarations (prototypes)
 	void resetZombieCoordinates(Item& zombie);
@@ -359,10 +359,10 @@ void spawnZombies(vector<Item>& zombieStore, GameData& data) {
 	assert(true);
 
 	// Function body
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < data.currentLevel.maxNumberOfZombies; i++) {
 		resetZombieCoordinates(zombieStore.at(i));
 	}
-	data.zombiesLeft = 4;
+	data.zombiesLeft = data.currentLevel.maxNumberOfZombies;
 }
 
 #pragma endregion
@@ -542,14 +542,14 @@ void moveSpot(GameObjectManager& gom, int dx, int dy) {
 void moveZombies(const char grid[][SIZEX], GameObjectManager& gom, GameData& data, string& endGameMessage) {
 	// Function declarations (prototypes)
 	void zombiesHitSpot(GameObjectManager& go, GameData& gd, string& endGameMessage);
-	void zombiesBumped(vector<Item>& zombieStore);
+	void zombiesBumped(vector<Item>& zombieStore, GameData data);
 	void zombiesFell(GameObjectManager& go, GameData& gd, string& endGameMessage);
 
 
 	assert(true);
 
 	// Function body
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < data.currentLevel.maxNumberOfZombies; i++) {
 		if (gom.zombies.at(i).active) { // Only moves if alive			
 			if (gom.zombies.at(i).currentLoc.x != gom.spot.currentLoc.x || gom.zombies.at(i).currentLoc.y != gom.spot.currentLoc.y) { // Only does all checks if coordinates are not equal
 				int zx, zy;
@@ -593,7 +593,7 @@ void moveZombies(const char grid[][SIZEX], GameObjectManager& gom, GameData& dat
 	}
 	zombiesFell(gom, data, endGameMessage);					//Checks if zombies have fallen into holes		
 	zombiesHitSpot(gom, data, endGameMessage);				// Checks if zombies have run into spot and causes damage+resets zombie if applicable		
-	zombiesBumped(gom.zombies);				// Checks to see if zombies have bumped into one another through movement and resets their coordinates if necessary
+	zombiesBumped(gom.zombies, data);				// Checks to see if zombies have bumped into one another through movement and resets their coordinates if necessary
 }
 
 // Zombies coordinate reset function
@@ -681,10 +681,10 @@ void zombiesHitSpot(GameObjectManager& gom, GameData& gameData, string& endGameM
 	assert(true);
 
 	// Function body
-	for (int i = 0; i < 4; i++) {
-		if (gom.zombies.at(i).active) {
+	for (int i = 0; i < gameData.currentLevel.maxNumberOfZombies; i++) {
+		if (gom.zombies.at(i).active) {	// Checks if zombie at pos[i] in the vector is alive before checking coords
 			if (gom.zombies.at(i).currentLoc.x == gom.spot.currentLoc.x && gom.zombies.at(i).currentLoc.y == gom.spot.currentLoc.y) {
-				gameData.lives--;
+				gameData.lives--;							// If zombie is touching spot, takes a life and returns to default coordinates
 				resetZombieCoordinates(gom.zombies.at(i));
 				if (gameData.lives <= 0) { // Check to see if player has any lives remaining after spot gets hit by zombie.
 					gameLost(gameData, endGameMessage);
@@ -699,21 +699,21 @@ void zombiesHitSpot(GameObjectManager& gom, GameData& gameData, string& endGameM
 // OUT:
 // Precondition:
 // Postcondition: Zombies that have walked into each other are sent back to default coordinates
-void zombiesBumped(vector<Item>& zombieStore) {
+void zombiesBumped(vector<Item>& zombieStore, GameData data) {
 	// Function declarations (prototypes)
 	void resetZombieCoordinates(Item& zombieS);
 
 	assert(true);
 
 	// Function body
-	for (int i = 0; i < 4; i++) {
-		if (zombieStore.at(i).active) {									// Only checks zombies that are alive			
-			for (int j = 0; j < 4; j++) {								// Loop to identify second zombies				
-				if (i != j) {											// Does not check a zombie against itself					
-					if (zombieStore.at(j).active) {						// Only compares with live zombies
-																		// If zombie i and zombie j are now on the same square, they are sent back home
+	for (int i = 0; i < data.currentLevel.maxNumberOfZombies; i++) {
+		if (zombieStore.at(i).active) {											// Only checks zombies that are alive			
+			for (int j = 0; j < data.currentLevel.maxNumberOfZombies; j++) {	// Loop to identify second zombies				
+				if (i != j) {													// Does not check a zombie against itself					
+					if (zombieStore.at(j).active) {								// Only compares with live zombies
+																				// If zombie i and zombie j are now on the same square, they are sent back home
 						if ((zombieStore.at(i).currentLoc.x == zombieStore.at(j).currentLoc.x) && (zombieStore.at(i).currentLoc.y == zombieStore.at(j).currentLoc.y)) {
-							resetZombieCoordinates(zombieStore.at(i));
+							resetZombieCoordinates(zombieStore.at(i));			// Resets coordinates of both zombies if they bump
 							resetZombieCoordinates(zombieStore.at(j));
 						}
 					}
@@ -735,7 +735,7 @@ void spotHitZombies(GameObjectManager& gom, GameData& gameData, string& endGameM
 	assert(true);
 
 	// Function body
-	for (int i = 0; i < 4; i++) {
+	for (int i = 0; i < gameData.currentLevel.maxNumberOfZombies; i++) {
 		if (gom.zombies.at(i).active) {
 			if (gom.zombies.at(i).currentLoc.x == gom.spot.currentLoc.x && gom.zombies.at(i).currentLoc.y == gom.spot.currentLoc.y) {
 				gom.zombies.at(i).active = false;
@@ -908,7 +908,7 @@ void replay(GameData& gameData)
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
 	// Function body
-	showMessage(clBlack, clYellow, 40, 6, "Showing Replay             ");
+	showMessage(clBlack, clYellow, 40, 6, "Showing Replay             ");	// Message to let the user know replay is in progress
 
 	for (int i = 0; i < gameData.replayData.size(); i++)
 	{
@@ -916,7 +916,7 @@ void replay(GameData& gameData)
 		Sleep(200);								// Waits for 1/5 second before showing the next frame
 	}
 	gameData.justReplayed = true;
-	showMessage(clBlack, clYellow, 40, 6, "Replay over! Press Enter to resume");
+	showMessage(clBlack, clYellow, 40, 6, "Replay over! Press Enter to resume");	// Message informing user how to use @ replay end
 	cin.ignore(INT_MAX, '\n');
 }
 
