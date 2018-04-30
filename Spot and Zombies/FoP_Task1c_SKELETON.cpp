@@ -920,7 +920,11 @@ void replay(GameData& gameData)
 	cin.ignore(INT_MAX, '\n');
 }
 
-
+// Display username entry screens and get input from user
+// IN: string& name, int maxUserNameLength
+// OUT:
+// Precondition:
+// Postcondition: user will have input name choice, name will contain valid username
 void getValidUserName(string& name, int maxUserNameLength) {
 	// Function declarations (prototypes)
 	void displayNameEntryScreen();
@@ -937,6 +941,11 @@ void getValidUserName(string& name, int maxUserNameLength) {
 	}
 }
 
+// Display level choice entry screens and get input from user
+// IN: int& desiredDifficulty
+// OUT:
+// Precondition:
+// Postcondition: user will have input level choice, desiredDifficulty will contain valid level number.
 void getValidUserLevelChoice(int& desiredDifficulty) {
 	// Function declarations (prototypes)
 	void displayLevelSelectScreen();
@@ -953,6 +962,11 @@ void getValidUserLevelChoice(int& desiredDifficulty) {
 	}
 }
 
+// Display maze choice entry screens and get input from user
+// IN: bool& useCustomMaze
+// OUT:
+// Precondition:
+// Postcondition: user will have input maze choice, useCustomMaze will be flagged accordingly.
 void getValidUserMazeChoice(bool& useCustomMaze) {
 	// Function declarations (prototypes)
 	void displayMazeSelectScreen();
@@ -981,14 +995,30 @@ void getValidUserMazeChoice(bool& useCustomMaze) {
 // ----- cheat actions
 // ---------------------------------------------------------------------------
 
+// Flag all items in a vector as inactive, used in various cheats
+// IN: vector<Item>& list
+// OUT:
+// Precondition:
+// Postcondition: All items in the vector will be flagged inactive.
 void deactivateAll(vector<Item>& list) {
+	assert(true);
+
+	// Function body
 	for (int i = 0; i < list.size(); i++)
 	{
 		list.at(i).active = false;
 	}
 }
 
+// Execute the freeze cheat to prevent the zombies moving.
+// IN: string& message, GameData& gameData
+// OUT:
+// Precondition:
+// Postcondition: Zombies will be flagged as frozen, movement prevented, and feedback message updated.
 void freezeCheat(string& message, GameData& gameData) {
+	assert(true);
+
+	// Function body
 	gameData.hasCheated = true;							// Flag the gamestate as having cheated to prevent high score saving later.
 	gameData.zombiesFrozen = !gameData.zombiesFrozen;	// Toggle value on each keypress. Boolean later checked to allow zombies to move.
 	if (gameData.zombiesFrozen) {
@@ -999,10 +1029,19 @@ void freezeCheat(string& message, GameData& gameData) {
 	}
 }
 
+// Execute the exterminate cheat and either kill or revive all the zombies.
+// IN: string& message, string& endGameMessage, GameData& gameData, GameObjectManager& gom, GameSpaceManager& gsm
+// OUT:
+// Precondition:
+// Postcondition: Exterminate all zombies in the game, otherwise if already exterminated, revive them all. If all pills inactive, game flagged as won.
 void exterminateCheat(string& message, string& endGameMessage, GameData& gameData, GameObjectManager& gom, GameSpaceManager& gsm) {
+	// Function declarations (prototypes)
 	void deactivateAll(vector<Item>& list);
 	void gameWon(GameData& gameData, string& endGameMessage);
 
+	assert(true);
+
+	// Function body
 	gameData.hasCheated = true;							// Flag the gamestate as having cheated to prevent high score saving later.
 	if (gameData.zombiesTerminated) {					// If used the cheat to kill last time, respawns zombies					
 		spawnZombies(gom.zombies, gameData);	// NOTE: spawnZombies was changed to use existing data for purposes such as this; replaced with setZombies
@@ -1021,10 +1060,19 @@ void exterminateCheat(string& message, string& endGameMessage, GameData& gameDat
 	}
 }
 
+// Execute the eatpill cheat and remove all pills from being active ingame.
+// IN: string& message, string& endGameMessage, GameData& gameData, vector<Item>& pillList, GameSpaceManager& gsm
+// OUT:
+// Precondition:
+// Postcondition: All pills flagged as inactive, player feedback message activated. If zombies dead, game flagged as won.
 void eatPillCheat(string& message, string& endGameMessage, GameData& gameData, vector<Item>& pillList, GameSpaceManager& gsm) {
+	// Function declarations (prototypes)
 	void deactivateAll(vector<Item>& list);
 	void gameWon(GameData& gameData, string& endGameMessage);
 
+	assert(true);
+
+	// Function body
 	gameData.hasCheated = true;							// Flag the gamestate as having cheated to prevent high score saving later.
 	deactivateAll(pillList);							// Set all pills visible flag to false so that they no longer get rendered in the game display
 	gameData.numberOfPillsLeft = 0;						// Player is not rewarded for pills eaten this way, so set pills to zero without changing lives left.
@@ -1067,6 +1115,9 @@ void showMessage(const WORD backColour, const WORD textColour, int x, int y, con
 void showGameTitle(const WORD backColour, const WORD textColour, int x, int y) {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
+	assert(true);
+
+	// Function body
 	showMessage(backColour, textColour, x, y, "--------------------");
 	showMessage(backColour, textColour, x, y + 1, "| SPOT AND ZOMBIES |");
 	showMessage(backColour, textColour, x, y + 2, "--------------------");
@@ -1076,6 +1127,9 @@ void showGameTitle(const WORD backColour, const WORD textColour, int x, int y) {
 void showGroupMembers(const WORD backColour, const WORD textColour, int x, int y) {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
+	assert(true);
+
+	// Function body
 	showMessage(backColour, textColour, x, y, "GROUP CS4G1A  -  2017-18");
 	showMessage(backColour, textColour, x, y + 1, "Charlie Batten  27012619");
 	showMessage(backColour, textColour, x, y + 2, "Matt Bellamy    26012012");
@@ -1083,44 +1137,72 @@ void showGroupMembers(const WORD backColour, const WORD textColour, int x, int y
 }
 
 // Display a request for the user to enter username from a set starting point in a defined colour.
-// User Entry text is then changed to a red colour.
+// User Entry text is then changed to a green colour.
 void displayNameRequest(const WORD backColour, const WORD textColour, int x, int y) {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
+
+	assert(true);
+
+	// Function body
 	showMessage(backColour, textColour, x, y, "Enter your name: ");
 	SelectTextColour(clGreen);
 }
 
+// Display a request for the user to enter level number from a set starting point in a defined colour.
+// User Entry text is then changed to a green colour.
 void displayLevelRequest(const WORD backColour, const WORD textColour, int x, int y) {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
+
+	assert(true);
+
+	// Function body
 	showMessage(backColour, textColour, x, y, "Select your difficulty (1 - EASY, 2-NORMAL, 3-HARD): ");
 	SelectTextColour(clGreen);
 }
 
+// Display a request for the user to enter maze choice from a set starting point in a defined colour.
+// User Entry text is then changed to a green colour.
 void displayCustomMazeRequest(const WORD backColour, const WORD textColour, int x, int y) {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
+
+	assert(true);
+
+	// Function body
 	showMessage(backColour, textColour, x, y, "Would you like to use a custom maze from file? (Y or N)");
 	SelectTextColour(clGreen);
 }
 
+// Display information relating to the players name and current high score
 void displayPlayerInformation(const PlayerInfo& playerData, int x, int y) {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
+	assert(true);
+
+	// Function body
 	showMessage(clDarkGrey, clYellow, x, y, "Player Name: " + playerData.playerName);
 	showMessage(clDarkGrey, clYellow, x, y + 1, "High Score: " + tostring(playerData.highscore));
 }
 
+// Display information about the games state on screen. Lives/Zombies/Pills/etc.
 void displayGameInformation(const GameData& gameData, int x, int y) {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
+	assert(true);
+
+	// Function body
 	showMessage(clDarkGrey, clYellow, x, y, "REMAINING LIVES: " + tostring(gameData.lives));
 	showMessage(clDarkGrey, clYellow, x, y + 1, "ZOMBIES LEFT: " + tostring(gameData.zombiesLeft));
 	showMessage(clDarkGrey, clYellow, x, y + 2, "NUMBER OF PILLS REMAINING: " + tostring(gameData.numberOfPillsLeft));
 	showMessage(clDarkGrey, clYellow, x, y + 3, "SuperSpot moves remaining: " + tostring(gameData.magicProtected));
 }
 
+// Display menu of available commands on screen.
 void displayControlsMenu(const WORD firstColour, const WORD secondColour, const int x, const int y) {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
+	assert(true);
+
+	// Function body
 	showMessage(firstColour, secondColour, x, y, "TO MOVE USE KEYBOARD ARROWS ");
 	showMessage(firstColour, secondColour, x, y + 1, "TO QUIT ENTER 'Q'           ");
 	showMessage(firstColour, secondColour, x, y + 2, "TO SEE A REPLAY PRESS '" + tostring(REPLAY) + "'   ");
@@ -1135,13 +1217,10 @@ void displayEntryScreen() {
 	void showGameTitle(const WORD backColour, const WORD textColour, int x, int y);
 	void showGroupMembers(const WORD backColour, const WORD textColour, int x, int y);
 	void displayTimeAndDate(const WORD firstColour, const WORD secondColour, const int x, const int y);
-	void displayNameRequest(const WORD backColour, const WORD textColour, int x, int y);
-
-	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
-
+	
 	assert(true);
-	// Function body
 
+	// Function body
 	SelectBackColour(clGrey); // Doing a full screen refresh here, setting the background colour to grey
 	Clrscr();
 	showGameTitle(clDarkGrey, clYellow, 10, 6);
@@ -1149,19 +1228,27 @@ void displayEntryScreen() {
 	displayTimeAndDate(clDarkGrey, clYellow, 40, 1);
 }
 
+// Name entry screen display
 void displayNameEntryScreen() {
 	void displayEntryScreen();
 	void displayNameRequest(const WORD backColour, const WORD textColour, int x, int y);
 
+	assert(true);
+
+	// Function body
 	displayEntryScreen();
 	displayNameRequest(clDarkGrey, clYellow, 10, 20);
 }
 
+// Name entry error screen display
 void displayNameEntryErrorScreen() {
 	void displayNameEntryScreen();
 	void GetCurrentCursorPosition(CoOrd& currentScreenPosition);
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
+	assert(true);
+
+	// Function body
 	CoOrd currentScreenposition;
 	displayNameEntryScreen();
 	GetCurrentCursorPosition(currentScreenposition);
@@ -1170,18 +1257,26 @@ void displayNameEntryErrorScreen() {
 	SelectTextColour(clGreen);
 }
 
+// Display level selection screen
 void displayLevelSelectScreen() {
 	void displayEntryScreen();
 
+	assert(true);
+
+	// Function body
 	displayEntryScreen();
 	displayLevelRequest(clDarkGrey, clYellow, 10, 20);
 }
 
+// Display level selection error screen
 void displayLevelSelectErrorScreen() {
 	void displayLevelSelectScreen();
 	void GetCurrentCursorPosition(CoOrd& currentScreenPosition);
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
+	assert(true);
+
+	// Function body
 	CoOrd currentScreenposition;
 	displayLevelSelectScreen();
 	GetCurrentCursorPosition(currentScreenposition);
@@ -1190,19 +1285,27 @@ void displayLevelSelectErrorScreen() {
 	SelectTextColour(clGreen);
 }
 
+// Display maze selection screen
 void displayMazeSelectScreen() {
 	void displayEntryScreen();
 	void displayCustomMazeRequest(const WORD backColour, const WORD textColour, int x, int y);
 
+	assert(true);
+
+	// Function body
 	displayEntryScreen();
 	displayCustomMazeRequest(clDarkGrey, clYellow, 10, 20);
 }
 
+// Display maze selection error screen
 void displayMazeSelectErrorScreen() {
 	void displayMazeSelectScreen();
 	void GetCurrentCursorPosition(CoOrd& currentScreenPosition);
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
+	assert(true);
+
+	// Function body
 	CoOrd currentScreenposition;
 	displayMazeSelectScreen();
 	GetCurrentCursorPosition(currentScreenposition);
@@ -1211,32 +1314,33 @@ void displayMazeSelectErrorScreen() {
 	SelectTextColour(clGreen);
 }
 
-
+// Display the end of game message.
 void displayEndGameMessages(const string& endGameMessage) {
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 
 	showMessage(clGrey, clRed, 40, 25, endGameMessage);
 }
 
+// Render the game onto the screen.
 void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, GameData& gameData, const string& mess, const string& endGameMessage)
 {
 	// Function declarations (prototypes)
 	void displayPlayerInformation(const PlayerInfo& playerData, int x, int y);
 	void displayGameInformation(const GameData& gameData, int x, int y);
 	void displayEndGameMessages(const string& endGameMessage);
-
-	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-	// display game title, messages, maze, spot and other items on screen
 	string tostring(char x);
 	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
 	void paintGrid(const GameSpaceManager& gsm);
 	void displayTimeAndDate(const WORD firstColour, const WORD secondColour, const int x, const int y);
 
-	// Function body
+	assert(true);
 
+	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+
+	// Function body
+	// display game title, messages, maze, spot and other items on screen
 	SelectBackColour(clGrey);
 	Clrscr();														// Using included libraries, clears the game screen - sets it all grey.
-
 																	// display game title
 	showMessage(clDarkGreen, clGreen, 0, 0, "___SPOT AND ZOMBIES GAME___");
 	showMessage(clYellow, clBlue, 40, 0, "FoP Task 1c: February 2018");
@@ -1266,7 +1370,11 @@ void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, GameDa
 	}
 }
 
+// Render the game grid to the screen.
 void paintGrid(const GameSpaceManager& gsm) {
+	assert(true);
+
+	// Function body
 	// display grid content on screen
 	SelectBackColour(clBlack);
 	SelectTextColour(clWhite);
@@ -1299,8 +1407,14 @@ void paintGrid(const GameSpaceManager& gsm) {
 	}
 }
 
+// Get the current cursor position on the screen.
 void GetCurrentCursorPosition(CoOrd& currentScreenPosition) {
+	assert(true);
+
+	// Local variables
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
+
+	// Function body
 	GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
 	currentScreenPosition.x = csbi.dwCursorPosition.X;
 	currentScreenPosition.y = csbi.dwCursorPosition.Y;
