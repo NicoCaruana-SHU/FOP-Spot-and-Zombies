@@ -124,7 +124,6 @@ vector<Difficulty> difficultyLevels{ easy, normal, hard };
 
 int main() {
 	// Function declarations (prototypes)
-	void displayNameEntryScreen();
 	void initialiseGame(GameSpaceManager& gsm, GameObjectManager& gom, GameData& gameData, bool useCustomMaze);
 	void paintGame(const GameSpaceManager& gsm, const PlayerInfo& playerData, GameData& gameData, const string& mess, const string& endGameMessage);
 	bool wantsToQuit(const int key);
@@ -136,15 +135,12 @@ int main() {
 	void gameOver(const PlayerInfo& playerData, const GameData& gameData);
 	void endProgram();
 
-	void getUserCharacterInput(string& userInput, int maxLength);
-	void getUserDifficultyChoice(int& desiredDifficulty);
 	void checkAndLoadUserSavedData(const string& userName, PlayerInfo& playerData);
 	void initialiseDifficultyVariables(GameData& gameData, const Difficulty& chosenDifficulty);
-	void displayNameEntryErrorScreen();
-	void displayLevelSelectScreen();
-	void displayLevelSelectErrorScreen();
-	void displayMazeSelectScreen();
-	void displayMazeSelectErrorScreen();
+
+	void getValidUserName(string& name, int maxUserNameLength);
+	void getValidUserLevelChoice(int& desiredDifficulty);
+	void getValidUserMazeChoice(bool& useCustomMaze);
 
 	// local variable declarations
 	PlayerInfo playerData;
@@ -159,37 +155,10 @@ int main() {
 	// Function body
 	Seed();																			// seed the random number generator
 	SetConsoleTitle("Spot and Zombies Game - FoP 2017-18");
-	displayNameEntryScreen();
-	getUserCharacterInput(name, maxUserNameLength);
-	while (name == "")
-	{
-		displayNameEntryErrorScreen();
-		getUserCharacterInput(name, maxUserNameLength);
-	}
-
+	getValidUserName(name, maxUserNameLength);
 	checkAndLoadUserSavedData(name, playerData);
-
-	displayLevelSelectScreen();
-	getUserDifficultyChoice(desiredDifficulty);
-	while ((desiredDifficulty < 1 || desiredDifficulty > difficultyLevels.size()))
-	{
-		displayLevelSelectErrorScreen();
-		getUserDifficultyChoice(desiredDifficulty);
-	}
-
-	displayMazeSelectScreen();
-	string mazeChoice;
-	getUserCharacterInput(mazeChoice, 1);
-	while ((toupper(mazeChoice.front()) != 'Y') && (toupper(mazeChoice.front()) != 'N'))
-	{
-		displayMazeSelectErrorScreen();
-		getUserCharacterInput(mazeChoice, 1);
-	}
-	if ((toupper(mazeChoice.front()) == 'Y'))
-	{
-		useCustomMaze = true;
-	}
-
+	getValidUserLevelChoice(desiredDifficulty);
+	getValidUserMazeChoice(useCustomMaze);
 	do
 	{
 		GameSpaceManager gsm;
@@ -197,25 +166,24 @@ int main() {
 		GameData gameData;
 
 		initialiseDifficultyVariables(gameData, difficultyLevels.at(desiredDifficulty - 1));
-
 		initialiseGame(gsm, gom, gameData, useCustomMaze);												// initialise grid (incl. walls and spot)	
-		paintGame(gsm, playerData, gameData, message, endGameMessage);					// display game info, modified grid and messages
-		int key;																		// current key selected by player
+		paintGame(gsm, playerData, gameData, message, endGameMessage);									// display game info, modified grid and messages
+		int key;																						// current key selected by player
 		do {
-			key = toupper(getKeyPress()); 												// read in  selected key: arrow or letter command
+			key = toupper(getKeyPress()); 																// read in  selected key: arrow or letter command
 			if (isArrowKey(key)) {
-				updateGameData(gsm.grid, gom, gameData, key, message, endGameMessage);	// move spot in that direction
+				updateGameData(gsm.grid, gom, gameData, key, message, endGameMessage);					// move spot in that direction
 			}
 			else {
 				commandCheck(key, message, endGameMessage, gsm, gom, gameData);
 			}
-			updateGrid(gsm, gom);														// Re-Update grid to apply changes
-			paintGame(gsm, playerData, gameData, message, endGameMessage);				// display game info, modified grid and messages
-		} while ((!wantsToQuit(key)) && (!gameData.gameEnded));							// while user does not want to quit
-		gameOver(playerData, gameData);													// HACK Save highscore data on player quit, if not cheated. Doesn't make sense in game terms really... Allows quitting early to manipulate highscore.. but spec does this, so its in for now.
+			updateGrid(gsm, gom);																		// Re-Update grid to apply changes
+			paintGame(gsm, playerData, gameData, message, endGameMessage);								// display game info, modified grid and messages
+		} while ((!wantsToQuit(key)) && (!gameData.gameEnded));											// while user does not want to quit
+		gameOver(playerData, gameData);																	// HACK Save highscore data on player quit, if not cheated. Doesn't make sense in game terms really... Allows quitting early to manipulate highscore.. but spec does this, so its in for now.
 		desiredDifficulty++;
 		levelComplete = gameData.levelComplete;
-		endProgram();																	// display final message
+		endProgram();																					// display final message
 	} while ((desiredDifficulty <= difficultyLevels.size()) && (levelComplete));
 
 	// TODO maybe add in game completion screen when user has won all levels.
@@ -228,8 +196,14 @@ int main() {
 // ----- initialise game state
 // ---------------------------------------------------------------------------
 
-
+// Set up initial game grid and place items at their respective positions
+// IN: Structs representing GameData and the chosen Difficulty level.
+// OUT: 
+// Precondition:
+// Postcondition: GameData struct updated with correct values for chosen difficulty.
 void initialiseDifficultyVariables(GameData& gameData, const Difficulty& chosenDifficulty) {
+	assert(true);
+	// Function body
 	gameData.currentLevel = chosenDifficulty;
 	gameData.lives = gameData.currentLevel.maxLives;
 	gameData.numberOfPillsLeft = gameData.currentLevel.maxPills;
@@ -238,37 +212,34 @@ void initialiseDifficultyVariables(GameData& gameData, const Difficulty& chosenD
 
 
 // Set up initial game grid and place items at their respective positions
-// IN: Structs representing GameSpaceManager, GameObjectManager and GameData
+// IN: Structs representing GameSpaceManager, GameObjectManager and GameData, boolean representing user's maze choice
 // OUT:
 // Precondition: GSM, GOM and GameData exist
-// Postcondition: Grid is set up with the maze layout and all objects placed
+// Postcondition: Grid is set up with the chosen maze layout and all objects placed
 void initialiseGame(GameSpaceManager& gsm, GameObjectManager& gom, GameData& gameData, bool useCustomMaze) {// initialise grid and place spot in middle
-																						// Function declarations (prototypes)
+	// Function declarations (prototypes)
+	void loadMazeConfiguration(char maze[][SIZEX]);;
 	void setInitialMazeStructure(char maze[][SIZEX]);
 	void setMaze(char g[][SIZEX], const char b[][SIZEX]);
-	void setItemInitialCoordinates(const char itemSymbol, Item& item, char[][SIZEX]);
-	void updateGrid(GameSpaceManager& gsm, GameObjectManager& gom);
-	void setMultipleItems(const char itemSymbol, int maxNumOfItems, vector<Item>& itemStore, char grid[][SIZEX]);
 	void setZombies(char grid[][SIZEX], vector<Item>& zombies, GameData& gameData);
-	void showMessage(const WORD backColour, const WORD textColour, int x, int y, const string& message);
-	void loadMazeConfiguration(char maze[][SIZEX]);;
+	void setMultipleItems(const char itemSymbol, int maxNumOfItems, vector<Item>& itemStore, char grid[][SIZEX]);
+	void setItemInitialCoordinates(const char itemSymbol, Item& item, char[][SIZEX]);
 
 	assert(true);
-	if (useCustomMaze)
-	{
-		loadMazeConfiguration(gsm.maze);
-	}
-	else {
-	setInitialMazeStructure(gsm.maze);										// initialise maze
-	}
+
 	// Function body
-	setMaze(gsm.grid, gsm.maze);											// Create first empty game frame
-	setZombies(gsm.grid, gom.zombies, gameData);							// Place zombies first so that nothing spawns over the corners.
+	if (useCustomMaze)																		// If user has chosen to use the custom maze
+		loadMazeConfiguration(gsm.maze);													// Load that maze from file
+	else
+		setInitialMazeStructure(gsm.maze);													// Otherwise, generate maze
+
+	setMaze(gsm.grid, gsm.maze);															// Create first empty game frame
+	setZombies(gsm.grid, gom.zombies, gameData);											// Place zombies first so that nothing spawns over the corners.
 	setMultipleItems(HOLE, gameData.currentLevel.maxNumberOfHoles, gom.holes, gsm.grid);	// Place the holes second
 	setMultipleItems(PILL, gameData.currentLevel.maxPills, gom.pills, gsm.grid);			// Place the pills
-	setItemInitialCoordinates(SPOT, gom.spot, gsm.grid);					// Finally place Spot
-	gameData.replayData.clear();											// Flush out irrelevant replay data
-	gameData.replayData.push_back(gsm);										// Add initial state to replay data
+	setItemInitialCoordinates(SPOT, gom.spot, gsm.grid);									// Finally place Spot
+	gameData.replayData.clear();															// Flush out irrelevant replay data
+	gameData.replayData.push_back(gsm);														// Add initial state to replay data
 }
 
 // Generate random co-ordinates within the grid bounds and place object there.
@@ -312,6 +283,11 @@ void setMultipleItems(const char itemSymbol, int maxNumOfItems, vector<Item>& it
 	}
 }
 
+// Default maze creation.
+// IN: Array representing the maze
+// OUT:
+// Precondition: None
+// Postcondition: Array populated with grid containing border walls and no inside pattern.
 void setInitialMazeStructure(char maze[][SIZEX]) {
 	/*
 	// set the position of the walls in the maze
@@ -336,6 +312,8 @@ void setInitialMazeStructure(char maze[][SIZEX]) {
 	case ' ': maze[row][col] = TUNNEL; break;
 	}
 	*/
+
+	// Function body
 	for (int row(0); row < SIZEY; ++row)
 		for (int col(0); col < SIZEX; ++col)
 			maze[row][col] = (col == 0 || col == SIZEX - 1 || row == 0 || row == SIZEY - 1) ? WALL : TUNNEL;
@@ -343,9 +321,9 @@ void setInitialMazeStructure(char maze[][SIZEX]) {
 
 // Zombies default init function
 // IN: Array representing the maze, vector representing (and referencing) all zombies
-// OUT: Zombie coordinates set to defaults, zombies set to be alive
+// OUT:
 // Precondition: None
-// Postcondition: All zombies placed in their initial corners and alive
+// Postcondition: Vector populated with created zombies, all zombies placed in their initial corners and alive
 void setZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData& gameData) {
 	// function declarations (prototypes)
 	void resetZombieCoordinates(Item& zombieStore);
@@ -357,7 +335,7 @@ void setZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData& gameDat
 	int xDef[4] = { 1, 1, SIZEX - 2, SIZEX - 2 }; // Position defaults x co-ord
 	int yDef[4] = { 1, SIZEY - 2, SIZEY - 2, 1 }; // Position defaults y co-ord
 
-												  // Function body
+	// Function body
 	for (int i = 0; i < gameData.currentLevel.maxNumberOfZombies; i++) {
 		Item z1;
 		z1.defaultLoc.x = xDef[i];
@@ -371,12 +349,12 @@ void setZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData& gameDat
 
 // Zombies spawning function
 // IN: Array representing the maze, vector representing (and referencing) all zombies
-// OUT: Zombie coordinates set to defaults, zombies set to be alive
+// OUT:
 // Precondition: None
-// Postcondition: All zombies placed in their initial corners and alive
-void spawnZombies(char grid[][SIZEX], vector<Item>& zombieStore, GameData& data) {
+// Postcondition: All zombies placed in their initial corners and alive. Number of zombies alive set in gamedata.
+void spawnZombies(vector<Item>& zombieStore, GameData& data) {
 	// Function declarations (prototypes)
-	void resetZombieCoordinates(Item& zombieStore);
+	void resetZombieCoordinates(Item& zombie);
 
 	assert(true);
 
@@ -467,10 +445,17 @@ void placeMultipleItems(char g[][SIZEX], const vector<Item>& itemStore) {
 // ---------------------------------------------------------------------------
 // ----- move items on the grid
 // ---------------------------------------------------------------------------
+
+// Update the game, based on player movement and collisions.
+// IN: Array representing the grid, GameObjectManager, GameData, int representing the key pressed, string for feedback message, string for endgamemessage.
+// OUT:
+// Precondition: None
+// Postcondition: All items will be updated on grid
 void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gameData, const int key, string& mess, string& endGameMessage) {
 	// Function declarations (prototypes)
 	bool isArrowKey(const int k);
 	void setKeyDirection(int k, int& dx, int& dy);
+	void moveSpot(GameObjectManager& gom, int dx, int dy);
 	void eatPill(GameObjectManager& gom, GameData& gameData);
 	void moveZombies(const char grid[][SIZEX], GameObjectManager& gom, GameData& data, string& endGameMessage);
 	void gameLost(GameData& gameData, string& endGameMessage);
@@ -478,51 +463,45 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gam
 	void spotHitZombies(GameObjectManager& gom, GameData& gameData, string& endGameMessage);
 	void zombiesHitSpot(GameObjectManager& go, GameData& gd, string& endGameMessage);
 
+
 	assert(isArrowKey(key));
 
 	// Local variables
-	mess = "                                         ";		// reset message to blank	
-	bool playerMoved = true;								// Bool to confirm whether or not player moved, so zombies can be moved.	
-	int dx(0), dy(0);										// X and Y values for applying movement to objects.
+	mess = "                                         ";								// reset message to blank	
+	bool playerMoved = true;														// Bool to confirm whether or not player moved, so zombies can be moved.	
+	int dx(0), dy(0);																// X and Y values for applying movement to objects.
 
-															// Function body
-	setKeyDirection(key, dx, dy);							// calculate direction of movement for given key
+	// Function body
+	setKeyDirection(key, dx, dy);													// calculate direction of movement for given key
 	switch (g[gom.spot.currentLoc.y + dy][gom.spot.currentLoc.x + dx]) {			// check new target position in grid and update game data (incl. spot coordinates) if move is possible
 																					// ...depending on what's on the target position in grid...
 	case TUNNEL:		// can move
-		gom.spot.currentLoc.y += dy;	// go in that Y direction
-		gom.spot.currentLoc.x += dx;	// go in that X direction
+		moveSpot(gom, dx, dy);
 		break;
 	case WALL:  		// hit a wall and stay there
 		mess = "CANNOT GO THERE!";
 		playerMoved = false;
 		break;
 	case ZOMBIE: // Allow movement onto zombie square, but must also check for pill underlying too.
-		gom.spot.currentLoc.x += dx;
-		gom.spot.currentLoc.y += dy;
-		if (gameData.magicProtected > 0)
-		{
-			spotHitZombies(gom, gameData, endGameMessage);
-		}
-		else {
-			zombiesHitSpot(gom, gameData, endGameMessage);
-		}
+		moveSpot(gom, dx, dy);
+		if (gameData.magicProtected > 0) // If spot is magically protected
+			spotHitZombies(gom, gameData, endGameMessage); // Collisions will favour spot
+		else
+			zombiesHitSpot(gom, gameData, endGameMessage); // Otherwise collisions will favour zombies
 		eatPill(gom, gameData);
 		if ((gameData.numberOfPillsLeft == 0) && (gameData.zombiesLeft == 0)) { // If there are no zombies alive when there are no pills remaining, game is won!;
 			gameWon(gameData, endGameMessage);
 		}
 		break;
 	case PILL:
-		gom.spot.currentLoc.x += dx;
-		gom.spot.currentLoc.y += dy;
+		moveSpot(gom, dx, dy);
 		eatPill(gom, gameData);
 		if ((gameData.numberOfPillsLeft == 0) && (gameData.zombiesLeft == 0)) { // If there are no zombies alive when there are no pills remaining, game is won!;
 			gameWon(gameData, endGameMessage);
 		}
 		break;
 	case HOLE:
-		gom.spot.currentLoc.x += dx;
-		gom.spot.currentLoc.y += dy;
+		moveSpot(gom, dx, dy);
 		gameData.lives--;
 		if (gameData.lives <= 0) { // Check to see if player has any lives remaining after they enter a hole.
 			gameLost(gameData, endGameMessage);
@@ -541,6 +520,18 @@ void updateGameData(const char g[][SIZEX], GameObjectManager& gom, GameData& gam
 			}
 		}
 	}
+}
+
+// Update spot's position in the GOM according to input recieved
+// IN: GameObjectManager, int representing x movement, int representing y movement.
+// OUT:
+// Precondition: dx and dy must have values betweem -1 and 1.
+// Postcondition: GOM will be updated with spots new grid position.
+void moveSpot(GameObjectManager& gom, int dx, int dy) {
+	assert((dx >= -1 && dx <= 1) && (dy >= -1 && dy <= 1));
+	// Function body
+	gom.spot.currentLoc.y += dy;	// go in that Y direction
+	gom.spot.currentLoc.x += dx;	// go in that X direction
 }
 
 // Zombies movement function
@@ -732,7 +723,13 @@ void zombiesBumped(vector<Item>& zombieStore) {
 	}
 }
 
+// Collision reaction for when spot hits zombies when magic protected
+// IN: GameObjectManager, GameData, string endgamemessage.
+// OUT:
+// Precondition: Spot will be magic protected at point of collision.
+// Postcondition: Zombie hit will be removed from the game, if all zombies dead and pills eaten, game flagged as won.
 void spotHitZombies(GameObjectManager& gom, GameData& gameData, string& endGameMessage) {
+	// Function declarations (prototypes)
 	void gameWon(GameData& gameData, string& endGameMessage);
 
 	assert(true);
@@ -806,7 +803,7 @@ bool wantsToQuit(const int key) {
 }
 
 // Get a valid string from user input. 
-// IN: String reference to store the user information in
+// IN: String reference to store the user information in, int representing maximum length of allowed input.
 // OUT:
 // Precondition:
 // Postcondition: String will be filled with a valid username, or empty string if invalid characters entered.
@@ -831,37 +828,52 @@ void getUserCharacterInput(string& userInput, int maxLength) {
 	}
 }
 
-void getUserDifficultyChoice(int& desiredDifficulty) {
+// Get a valid integer input from user input. 
+// IN: int reference to store the user information in,  int representing maximum length of allowed input.
+// OUT:
+// Precondition:
+// Postcondition: int will be filled with a valid integer, or -1 if invalid characters entered.
+void getUserNumericalInput(int& userNumber, int maxNumofDigits) {
 	assert(true);
-	string userInput;
 
+	// Local variables
+	string userInput;
 	bool valid = true;
 
 	// Function body 
-	cin >> userInput;					// Get input from user, using cin.
+	cin >> setw(maxNumofDigits)>> userInput;							// Get input from user, using cin.
 	cin.ignore(INT_MAX, '\n');
 	int i = 0;
-	while (valid && (i < userInput.length())) {					// Loop while the name is still considered valid, and end of string hasn't been reached.
-		if (!(userInput.at(i) >= '0') && (userInput.at(i) <= '9')) {	// Check if character is not a valid letter a-z including capitals.
-			valid = false;									// Flag name invalid if invalid character found
+	while (valid && (i < userInput.length())) {							// Loop while the input is still considered valid, and end of string hasn't been reached.
+		if (!(userInput.at(i) >= '0') && (userInput.at(i) <= '9')) {	// Check if character is not a valid number 0-9
+			valid = false;												// Flag number invalid if invalid character found
 		}
-		++i;												// Increment counter to continue iterating through string.
+		++i;															// Increment counter to continue iterating through string.
 	}
 	if (valid) {
 		istringstream numberString(userInput);
-		numberString >> desiredDifficulty;
+		numberString >> userNumber;
 	}
 	else {
-		desiredDifficulty = -1;// If an invalid character has been found, reset the string to empty. 
+		userNumber = -1;												// If an invalid character has been found, reset the int to -1. 
 	}
 }
 
+// Execute Menu command dependant on user input.
+// IN: int key, string& message, string& endGameMessage, GameSpaceManager& gsm, GameObjectManager& gom, GameData& gameData
+// OUT:
+// Precondition:
+// Postcondition: Correct reaction to command will execute dependant on user input key.
 void commandCheck(int key, string& message, string& endGameMessage, GameSpaceManager& gsm, GameObjectManager& gom, GameData& gameData) {
+	// Function declarations (prototypes)
 	void freezeCheat(string& message, GameData& gameData);
 	void exterminateCheat(string& message, string& endGameMessage, GameData& gameData, GameObjectManager& gom, GameSpaceManager& gsm);
 	void eatPillCheat(string& message, string& endGameMessage, GameData& gameData, vector<Item>& pillList, GameSpaceManager& gsm);
 	void replay(GameData& gameData);
 
+	assert(true);
+
+	// Function body 
 	switch (key) {
 	case FREEZE:
 		freezeCheat(message, gameData);
@@ -907,6 +919,61 @@ void replay(GameData& gameData)
 	showMessage(clBlack, clYellow, 40, 6, "Replay over! Press Enter to resume");
 	cin.ignore(INT_MAX, '\n');
 }
+
+
+void getValidUserName(string& name, int maxUserNameLength) {
+	// Function declarations (prototypes)
+	void displayNameEntryScreen();
+	void getUserCharacterInput(string& userInput, int maxLength);
+	void displayNameEntryErrorScreen();
+
+	// Function body
+	displayNameEntryScreen();
+	getUserCharacterInput(name, maxUserNameLength);
+	while (name == "")
+	{
+		displayNameEntryErrorScreen();
+		getUserCharacterInput(name, maxUserNameLength);
+	}
+}
+
+void getValidUserLevelChoice(int& desiredDifficulty) {
+	// Function declarations (prototypes)
+	void displayLevelSelectScreen();
+	void getUserNumericalInput(int& userNumber, int maxNumofDigits);
+	void displayLevelSelectErrorScreen();
+
+	// Function body
+	displayLevelSelectScreen();
+	getUserNumericalInput(desiredDifficulty, 1);
+	while ((desiredDifficulty < 1 || desiredDifficulty > difficultyLevels.size()))
+	{
+		displayLevelSelectErrorScreen();
+		getUserNumericalInput(desiredDifficulty, 1);
+	}
+}
+
+void getValidUserMazeChoice(bool& useCustomMaze) {
+	// Function declarations (prototypes)
+	void displayMazeSelectScreen();
+	void getUserCharacterInput(string& userInput, int maxLength);
+	void displayMazeSelectErrorScreen();
+
+	// Function body
+	displayMazeSelectScreen();
+	string mazeChoice;
+	getUserCharacterInput(mazeChoice, 1);
+	while ((toupper(mazeChoice.front()) != 'Y') && (toupper(mazeChoice.front()) != 'N'))
+	{
+		displayMazeSelectErrorScreen();
+		getUserCharacterInput(mazeChoice, 1);
+	}
+	if ((toupper(mazeChoice.front()) == 'Y'))
+	{
+		useCustomMaze = true;
+	}
+}
+
 #pragma endregion
 
 #pragma region cheat actions
@@ -938,7 +1005,7 @@ void exterminateCheat(string& message, string& endGameMessage, GameData& gameDat
 
 	gameData.hasCheated = true;							// Flag the gamestate as having cheated to prevent high score saving later.
 	if (gameData.zombiesTerminated) {					// If used the cheat to kill last time, respawns zombies					
-		spawnZombies(gsm.grid, gom.zombies, gameData);	// NOTE: spawnZombies was changed to use existing data for purposes such as this; replaced with setZombies
+		spawnZombies(gom.zombies, gameData);	// NOTE: spawnZombies was changed to use existing data for purposes such as this; replaced with setZombies
 		gameData.zombiesTerminated = false;
 		message = "CHEAT: ZOMBIES SPAWNED!";
 	}
